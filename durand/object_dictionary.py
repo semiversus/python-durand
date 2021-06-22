@@ -89,7 +89,7 @@ class ObjectDictionary:
         value = max(self._data.get(largest_subindex, 0),  variable.subindex)
         self._data[largest_subindex] = value
 
-    def lookup(self, index: int, subindex: int) -> Variable:
+    def lookup(self, index: int, subindex: int = 0) -> Variable:
         return self._variables[(index, subindex)]
 
     def write(self, variable: Variable, value: Any):

@@ -1,11 +1,11 @@
 import struct
 from typing import TYPE_CHECKING
 
-from .. import datatypes as DT
-from ..object_dictionary import Variable
+from durand.datatypes import DatatypeEnum as DT
+from durand.object_dictionary import Variable
 
 if TYPE_CHECKING:
-    from ..node import Node
+    from durand.node import Node
 
 
 SDO_STRUCT = struct.Struct('<BHB')
@@ -86,7 +86,7 @@ class SDOServer:
             _, index, subindex = SDO_STRUCT.unpack(msg[:4])
             response = SDO_STRUCT.pack(0x80, index, subindex)
             response += struct.pack('<I', code)
-            self._node.adapter.send(0x580 + self._node.node_id, response)
+            self._node.adapter.send(self._cob_txsdo, response)
 
     def _lookup(self, index: int, subindex: int) -> Variable:
         try:
@@ -136,7 +136,7 @@ class SDOServer:
             raise SDODomainAbort(0x08000020)  # data can't be stored
 
         response = SDO_STRUCT.pack(0x60, index, subindex) + bytes(4)
-        self._node.send(0x580 + self._node.node_id, response)
+        self._node.send(self._cob_txsdo, response)
 
     def upload(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
@@ -161,4 +161,4 @@ class SDOServer:
         response = SDO_STRUCT.pack(cmd, index, subindex) + data
         response += bytes(4 - variable.datatype.size)
 
-        self._node.send(0x580 + self._node.node_id, response)
+        self._node.send(self._cob_txsdo, response)

@@ -1,6 +1,8 @@
 class TPDO:
-    pass
+    def __init__(self, index):
+        pass
 
 
 class RPDO:
-    pass
+    def __init__(self, index):
+        pass

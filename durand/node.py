@@ -3,6 +3,7 @@ from .object_dictionary import ObjectDictionary
 from .services.sdo import SDOServer
 from .services.pdo import TPDO, RPDO
 from .services.nmt import NMTService
+from durand import adapters
 
 
 class Node:
@@ -14,6 +15,7 @@ class Node:
         self.object_dictionary = ObjectDictionary() if od is None else od
 
         self._subscriptions = dict()
+        adapter.bind(self._subscriptions)
 
         self.nmt = NMTService(self)
         self.sdo = {0: SDOServer(self)}
