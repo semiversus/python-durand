@@ -1,9 +1,26 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Callable, Union
 from inspect import ismethod, getmembers
 
 from .datatypes import DatatypeEnum
+
+
+@dataclass(frozen=True)
+class Object:
+    index: int
+    type: int
+    name: str
+    object_type: int
+
+
+@dataclass
+class Array(Object):
+    type: int = 8
+    fields: list[Variable] = field(default_factory=list)
+
+    def __getitem__(self, subindex):
+        return self.fields[subindex]
 
 
 @dataclass(frozen=True)
@@ -39,37 +56,17 @@ class Variable:
     def is_readable(self):
         return self.access in ('ro', 'rw', 'const')
 
-    def on_read(self, arg: Union[Callable, 'ObjectDictionary']):
-        if isinstance(arg, ObjectDictionary):
-            # it's called via @variable.on_read(od) wrapping a function
-            def wrap(func):
-                arg.set_read_callback(self, func)
-            return wrap
-
-        # it's called via @variable.on_read wrapping a method
-        arg.on_read_variable = self
-        return arg
-
-    def on_update(self, arg: Union[Callable, 'ObjectDictionary']):
-        if isinstance(arg, ObjectDictionary):
-            # it's called via @variable.on_update(od) wrapping a function
-            def wrap(func):
-                arg.add_update_callback(self, func)
-            return wrap
-
-        # it's called via @variable.on_update wrapping a method
-        arg.on_update_variable = self
-        return arg
-
 
 class ObjectDictionary:
     def __init__(self):
         self._variables: Dict[Tuple[int, int], Variable] = dict()
         self._data: Dict[Variable, Any] = dict()
+
+        self._validate_callbacks: Dict[Variable, List[Callable]] = \
+            defaultdict(list)
         self._update_callbacks: Dict[Variable, List[Callable]] = \
             defaultdict(list)
         self._read_callbacks: Dict[Variable, Callable] = dict()
-        self._collect_variables()
 
     def add_object(self, variable: Variable):
         self._variables[variable.multiplexor] = variable
@@ -101,6 +98,12 @@ class ObjectDictionary:
         for callback in self._update_callbacks[variable]:
             callback(value)
 
+    def add_validate_callback(self, variable: Variable, callback):
+        self._validate_callbacks[variable].append(callback)
+
+    def remove_validate_callback(self, variable: Variable, callback):
+        self._validate_callbacks[variable].remove(callback)
+
     def add_update_callback(self, variable: Variable, callback):
         self._update_callbacks[variable].append(callback)
 
@@ -113,15 +116,5 @@ class ObjectDictionary:
 
         return self._data[variable]
 
-    def set_read_callback(self, variable: Variable, callback):
+    def set_read_callback(self, variable: Variable, callback) -> None:
         self._read_callbacks[variable] = callback
-
-    def _collect_variables(self):
-        for _, attr in getmembers(self):
-            if isinstance(attr, Variable):
-                self.add_object(attr)
-            elif ismethod(attr):
-                if hasattr(attr, 'on_update_variable'):
-                    self.add_update_callback(attr.on_update_variable, attr)
-                elif hasattr(attr, 'on_read_variable'):
-                    self.set_read_callback(attr.on_read_variable, attr)

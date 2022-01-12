@@ -11,6 +11,7 @@ class DatatypeEnum(IntEnum):
     UNSIGNED16 = 6
     UNSIGNED32 = 7
     REAL32 = 8
+    DOMAIN = 15
 
 
 struct_dict = {
