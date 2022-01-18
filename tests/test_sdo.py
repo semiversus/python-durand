@@ -4,6 +4,7 @@ import pytest
 
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
+from durand.datatypes import struct_dict
 
 from .adapter import TestAdapter
 
@@ -32,7 +33,22 @@ def test_sdo_expitited_download(datatype):
 
     mock_write.assert_not_called()
 
+    # with specified size
+    size = struct_dict[datatype].size
+    cmd = 0x23 + ((4 - size) << 2)
+    adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\x00\x20\x00\x01\x02\x03\x04')
 
-    adapter.receive(0x582, b'\x20\x00\x20\x00\x00\x00\x00\x00')
+    adapter.tx_mock.assert_called_once_with(0x582, b'\x60\x00\x20\x00\x00\x00\x00\x00')
+    value = struct_dict[datatype].unpack(b'\x01\x02\x03\x04'[:size])[0]
+    mock_write.assert_called_once_with(value)
 
-    adapter.tx_mock.assert_called_once_with(0x602, '\x80')
+
+    # without specified size
+    adapter.tx_mock.reset_mock()
+    mock_write.reset_mock()
+
+    adapter.receive(0x602, b'\x22\x00\x20\x00\x04\x03\x02\x01')
+    adapter.tx_mock.assert_called_once_with(0x582, b'\x60\x00\x20\x00\x00\x00\x00\x00')
+
+    value = struct_dict[datatype].unpack(b'\x04\x03\x02\x01'[:size])[0]
+    mock_write.assert_called_once_with(value)

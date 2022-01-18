@@ -1,11 +1,16 @@
 import struct
 from typing import TYPE_CHECKING
+import logging
 
 from durand.datatypes import DatatypeEnum as DT
+from durand.datatypes import struct_dict
 from durand.object_dictionary import Variable
 
 if TYPE_CHECKING:
     from durand.node import Node
+
+
+log = logging.getLogger(__name__)
 
 
 SDO_STRUCT = struct.Struct('<BHB')
@@ -47,7 +52,7 @@ class SDOServer:
         else:
             od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8,
                                    'rw' if index else 'ro'))
-            self._node.add_subscription(0x580 + node.node_id, self.handle_msg)
+            self._node.add_subscription(self._cob_rxsdo, self.handle_msg)
 
     def _update_cob_rxsdo(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
@@ -83,6 +88,8 @@ class SDOServer:
             if isinstance(e, SDODomainAbort):
                 code = e.code
 
+            log.exception('Exception during processing %r', msg)
+
             _, index, subindex = SDO_STRUCT.unpack(msg[:4])
             response = SDO_STRUCT.pack(0x80, index, subindex)
             response += struct.pack('<I', code)
@@ -110,7 +117,7 @@ class SDOServer:
         if variable.access not in ('rw', 'wo'):
             raise SDODomainAbort(0x06010002)  # write a read-only object
 
-        dt_struct = DT.struct_dict[variable.datatype]
+        dt_struct = struct_dict[variable.datatype]
 
         if cmd & 0x01:  # size specified
             size = 4 - ((cmd >> 2) & 0x03)
@@ -136,7 +143,7 @@ class SDOServer:
             raise SDODomainAbort(0x08000020)  # data can't be stored
 
         response = SDO_STRUCT.pack(0x60, index, subindex) + bytes(4)
-        self._node.send(self._cob_txsdo, response)
+        self._node.adapter.send(self._cob_txsdo, response)
 
     def upload(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
@@ -149,7 +156,7 @@ class SDOServer:
         value = self._node.object_dictionary.read(variable)
         value = int(value / variable.factor)
 
-        dt_struct = DT.struct_dict[variable.datatype]
+        dt_struct = struct_dict[variable.datatype]
 
         try:
             data = dt_struct.pack(value)

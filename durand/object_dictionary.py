@@ -1,26 +1,8 @@
 from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Callable, Union
-from inspect import ismethod, getmembers
 
 from .datatypes import DatatypeEnum
-
-
-@dataclass(frozen=True)
-class Object:
-    index: int
-    type: int
-    name: str
-    object_type: int
-
-
-@dataclass
-class Array(Object):
-    type: int = 8
-    fields: list[Variable] = field(default_factory=list)
-
-    def __getitem__(self, subindex):
-        return self.fields[subindex]
 
 
 @dataclass(frozen=True)
@@ -56,6 +38,27 @@ class Variable:
     def is_readable(self):
         return self.access in ('ro', 'rw', 'const')
 
+    def on_read(self, arg: Union[Callable, 'ObjectDictionary']):
+        if isinstance(arg, ObjectDictionary):
+            # it's called via @variable.on_read(od) wrapping a function
+            def wrap(func):
+                arg.set_read_callback(self, func)
+            return wrap
+
+        # it's called via @variable.on_read wrapping a method
+        arg.on_read_variable = self
+        return arg
+
+    def on_update(self, arg: Union[Callable, 'ObjectDictionary']):
+        if isinstance(arg, ObjectDictionary):
+            # it's called via @variable.on_update(od) wrapping a function
+            def wrap(func):
+                arg.add_update_callback(self, func)
+            return wrap
+
+        # it's called via @variable.on_update wrapping a method
+        arg.on_update_variable = self
+        return arg
 
 class ObjectDictionary:
     def __init__(self):
