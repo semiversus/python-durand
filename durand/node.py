@@ -3,7 +3,7 @@ from .object_dictionary import ObjectDictionary
 from .services.sdo import SDOServer
 from .services.pdo import TPDO, RPDO
 from .services.nmt import NMTService
-from durand import adapters
+from .services.heartbeat import init_heartbeat
 
 
 class Node:
@@ -14,13 +14,17 @@ class Node:
         self.node_id = node_id
         self.object_dictionary = ObjectDictionary() if od is None else od
 
+        self.scheduler = Scheduler()
+
         self._subscriptions = dict()
         adapter.bind(self._subscriptions)
 
         self.nmt = NMTService(self)
         self.sdo = {0: SDOServer(self)}
-        self.tpdo = {TPDO(i) for i in range(1, 5)}
-        self.rpdo = {RPDO(i) for i in range(1, 5)}
+        self.tpdo = {i: TPDO(self, i) for i in range(1, 5)}
+        self.rpdo = {i: RPDO(self, i) for i in range(1, 5)}
+
+        init_heartbeat(self)
 
     def add_sdo_servers(self, count: int):
         if len(self.sdo) > 1:
