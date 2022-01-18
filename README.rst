@@ -1,5 +1,5 @@
 =======================================
-Python Durand
+Python Durand - CANOpen Device Library
 =======================================
 
 CANOpen library to implement (local) nodes.
