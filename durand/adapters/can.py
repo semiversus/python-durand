@@ -1,5 +1,6 @@
 """ Interfacing python-canopen-node with python-can library
 """
+import asyncio
 from typing import Dict, Callable
 
 import can
@@ -15,7 +16,7 @@ class CANAdapter(AdapterABC):
     def bind(self, subscriptions: Dict[int, Callable]):
         self._subscriptions = subscriptions
         listener = NodeListener(subscriptions)
-        self.notifier = can.Notifier(self._bus, listener, 1, self._loop)
+        self.notifier = can.Notifier(self._bus, (listener,), 1, self._loop)
 
     def send(self, cob_id: int, msg: bytes):
         msg = can.Message(arbitration_id=cob_id, data=msg,

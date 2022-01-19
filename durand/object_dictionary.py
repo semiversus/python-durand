@@ -60,6 +60,7 @@ class Variable:
         arg.on_update_variable = self
         return arg
 
+
 class ObjectDictionary:
     def __init__(self):
         self._variables: Dict[Tuple[int, int], Variable] = dict()
@@ -94,9 +95,6 @@ class ObjectDictionary:
 
     def write(self, variable: Variable, value: Any):
         self._data[variable] = value
-
-        if variable not in self._update_callbacks:
-            return
 
         for callback in self._update_callbacks[variable]:
             callback(value)

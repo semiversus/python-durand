@@ -74,7 +74,7 @@ class SDOServer:
         if not (value | self._cob_rxsdo) & (1 << 31):
             self._node.add_subscription(self._cob_rxsdo & 0x7FF)
 
-    def handle_msg(self, msg: bytes):
+    def handle_msg(self, cob_id: int, msg: bytes):
         try:
             ccs = msg[0] & 0xE0
             if ccs == 0x20:  # request download
@@ -166,6 +166,6 @@ class SDOServer:
         cmd = 0x43 + ((4 - dt_struct.size) << 2)
 
         response = SDO_STRUCT.pack(cmd, index, subindex) + data
-        response += bytes(4 - variable.datatype.size)
+        response += bytes(4 - dt_struct.size)
 
-        self._node.send(self._cob_txsdo, response)
+        self._node.adapter.send(self._cob_txsdo, response)

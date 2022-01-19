@@ -21,15 +21,14 @@ class NMTService:
     def __init__(self, node: 'Node'):
         self._node = node
         self._state_callbacks = list()
-        
+
         self.state = None
 
         node.add_subscription(cob_id=0, callback=self.handle_msg)
 
         self.set_state(StateEnum.INITIALISATION)
-        self.set_state(StateEnum.PRE_OPERATIONAL)
 
-    def handle_msg(self, msg: bytes):
+    def handle_msg(self, cob_id: int, msg: bytes):
         cs, node_id = msg[:2]
 
         if node_id not in (0, self._node.node_id):  # 0 is used for broadcast
@@ -42,7 +41,7 @@ class NMTService:
         elif cs == 0x80 and self.state in (StateEnum.OPERATIONAL, StateEnum.STOPPED):
             self.set_state(StateEnum.PRE_OPERATIONAL)  # enter pre-operational
         elif cs in (0x81, 0x82):  # Reset Node or Reset Communication
-            self.set_state(StateEnum.INITIALISATION)  
+            self.set_state(StateEnum.INITIALISATION)
             self.set_state(StateEnum.PRE_OPERATIONAL)
         else:
             log.error('Unknown NMT command specifier 0x%02X', cs)
@@ -54,7 +53,7 @@ class NMTService:
         if state == StateEnum.INITIALISATION:
             # send bootup message
             self._node.adapter.send(0x700 + self._node.node_id, b'\x00')
-        
+
         for callback in self._state_callbacks:
             callback(state)
 
@@ -62,3 +61,4 @@ class NMTService:
 
     def add_state_callback(self, callback):
         self._state_callbacks.append(callback)
+        callback(self.state)

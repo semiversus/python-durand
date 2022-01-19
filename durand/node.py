@@ -2,8 +2,8 @@ from .adapters import AdapterABC
 from .object_dictionary import ObjectDictionary
 from .services.sdo import SDOServer
 from .services.pdo import TPDO, RPDO
-from .services.nmt import NMTService
-from .services.heartbeat import init_heartbeat
+from .services.nmt import NMTService, StateEnum
+from .services.heartbeat import HeartbeatProducer
 
 
 class Node:
@@ -14,8 +14,6 @@ class Node:
         self.node_id = node_id
         self.object_dictionary = ObjectDictionary() if od is None else od
 
-        self.scheduler = Scheduler()
-
         self._subscriptions = dict()
         adapter.bind(self._subscriptions)
 
@@ -24,7 +22,9 @@ class Node:
         self.tpdo = {i: TPDO(self, i) for i in range(1, 5)}
         self.rpdo = {i: RPDO(self, i) for i in range(1, 5)}
 
-        init_heartbeat(self)
+        HeartbeatProducer(self)
+
+        self.nmt.set_state(StateEnum.PRE_OPERATIONAL)
 
     def add_sdo_servers(self, count: int):
         if len(self.sdo) > 1:
