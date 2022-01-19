@@ -18,16 +18,24 @@ class TPDO:
         self._objects = ()
         self._cob_id = 0x180 + (index - 1) * 0x100 + node.node_id
 
+        #heartbeat_producer = Variable(0x1017, 0, DT.UNSIGNED16, 'rw')
+
+        #node.object_dictionary.add_object(heartbeat_producer)
+        #node.object_dictionary.add_update_callback(heartbeat_producer, self._update_interval)
+
     def map_objects(self, *variables: Variable):
         for variable in self._objects:
-            self._node.object_dictionary.remove_update_callback(variable, self._update)
+            self._node.object_dictionary.remove_update_callback(variable, self._on_change)
 
         for variable in variables:
-            self._node.object_dictionary.add_update_callback(variable, self._update)
+            self._node.object_dictionary.add_update_callback(variable, self._on_change)
 
         self._objects = variables
 
-    def _update(self, _value):
+    def _on_change(self, _value):
+        self._transmit()
+
+    def _transmit(self):
         msg = b''
         for variable in self._objects:
             value = self._node.object_dictionary.read(variable)
