@@ -31,11 +31,11 @@ class Variable:
         return (self.index, self.subindex)
 
     @property
-    def is_writeable(self):
+    def writable(self):
         return self.access in ('wo', 'rw')
 
     @property
-    def is_readable(self):
+    def readable(self):
         return self.access in ('ro', 'rw', 'const')
 
     @property
