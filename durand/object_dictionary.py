@@ -134,3 +134,7 @@ class ObjectDictionary:
 
     def set_read_callback(self, variable: Variable, callback) -> None:
         self._read_callbacks[variable] = callback
+
+    @property
+    def variables(self):
+        return tuple(self._variables.keys())
