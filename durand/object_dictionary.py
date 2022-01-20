@@ -1,8 +1,12 @@
 from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Callable
+import logging
 
 from .datatypes import DatatypeEnum, struct_dict
+
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -99,10 +103,16 @@ class ObjectDictionary:
         return self._variables[(index, subindex)]
 
     def write(self, variable: Variable, value: Any):
+        for callback in self._validate_callbacks[variable]:
+            callback(value)  # may raises a exception
+
         self._data[variable] = value
 
         for callback in self._update_callbacks[variable]:
-            callback(value)
+            try:
+                callback(value)
+            except Exception as e:
+                log.exception(f'Writing {value!r} to {variable!r} raised an {e!r}')
 
     def add_validate_callback(self, variable: Variable, callback):
         self._validate_callbacks[variable].append(callback)
