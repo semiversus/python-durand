@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Callable, Union
+from typing import Any, Dict, List, Tuple, Callable
 
-from .datatypes import DatatypeEnum
+from .datatypes import DatatypeEnum, struct_dict
 
 
 @dataclass(frozen=True)
@@ -38,27 +38,32 @@ class Variable:
     def is_readable(self):
         return self.access in ('ro', 'rw', 'const')
 
-    def on_read(self, arg: Union[Callable, 'ObjectDictionary']):
-        if isinstance(arg, ObjectDictionary):
-            # it's called via @variable.on_read(od) wrapping a function
-            def wrap(func):
-                arg.set_read_callback(self, func)
-            return wrap
+    @property
+    def size(self) -> int:
+        return struct_dict[self.datatype].size
 
-        # it's called via @variable.on_read wrapping a method
-        arg.on_read_variable = self
-        return arg
+    def on_read(self, od: 'ObjectDictionary'):
+        # it's called via @variable.on_read(od) wrapping a function
+        def wrap(func):
+            od.set_read_callback(self, func)
+        return wrap
 
-    def on_update(self, arg: Union[Callable, 'ObjectDictionary']):
-        if isinstance(arg, ObjectDictionary):
-            # it's called via @variable.on_update(od) wrapping a function
-            def wrap(func):
-                arg.add_update_callback(self, func)
-            return wrap
+    def on_update(self, od: 'ObjectDictionary'):
+        # it's called via @variable.on_update(od) wrapping a function
+        def wrap(func):
+            od.add_update_callback(self, func)
+        return wrap
 
-        # it's called via @variable.on_update wrapping a method
-        arg.on_update_variable = self
-        return arg
+    def pack(self, value) -> bytes:
+        value = int(value / self.factor)
+        dt_struct = struct_dict[self.datatype]
+        return dt_struct.pack(value)
+
+    def unpack(self, data: bytes):
+        dt_struct = struct_dict[self.datatype]
+        value = dt_struct.unpack(data)[0]
+        value *= self.factor
+        return value
 
 
 class ObjectDictionary:

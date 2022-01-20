@@ -125,11 +125,9 @@ class SDOServer:
             size = dt_struct.size
 
         try:
-            value, = dt_struct.unpack(msg[4:4+size])
+            value = variable.unpack(msg[4:4+size])
         except struct.error:
             raise SDODomainAbort(0x06070010)  # datatype size is not matching
-
-        value *= variable.factor
 
         if variable.minimum is not None and value < variable.minimum:
             raise SDODomainAbort(0x06090032)  # value too low
@@ -154,12 +152,8 @@ class SDOServer:
             raise SDODomainAbort(0x06010001)  # read a write-only object
 
         value = self._node.object_dictionary.read(variable)
-        value = int(value / variable.factor)
-
-        dt_struct = struct_dict[variable.datatype]
-
         try:
-            data = dt_struct.pack(value)
+            data = variable.pack(value)
         except struct.error:
             raise SDODomainAbort(0x06090030)  # value range exceeded
 

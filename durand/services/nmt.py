@@ -35,7 +35,7 @@ class NMTService:
             return
 
         if cs == 0x01 and self.state in (StateEnum.PRE_OPERATIONAL, StateEnum.STOPPED):
-            self._set_state(StateEnum.OPERATIONAL)  # start node
+            self.set_state(StateEnum.OPERATIONAL)  # start node
         elif cs == 0x02 and self.state in (StateEnum.PRE_OPERATIONAL, StateEnum.OPERATIONAL):
             self.set_state(StateEnum.STOPPED)  # stop node
         elif cs == 0x80 and self.state in (StateEnum.OPERATIONAL, StateEnum.STOPPED):
