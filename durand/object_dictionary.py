@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Callable
 import logging
@@ -136,5 +136,5 @@ class ObjectDictionary:
         self._read_callbacks[variable] = callback
 
     @property
-    def variables(self):
+    def variables(self) -> Tuple[Variable]:
         return tuple(self._variables.keys())
