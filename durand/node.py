@@ -26,13 +26,6 @@ class Node:
 
         self.nmt.set_state(StateEnum.PRE_OPERATIONAL)
 
-    def add_sdo_servers(self, count: int):
-        if len(self.sdo) > 1:
-            raise ValueError('SDO servers already added')
-
-        for index in range(1, count + 1):
-            self.sdo[index] = SDOServer(self, index=index)
-
     def add_subscription(self, cob_id: int, callback):
         self._subscriptions[cob_id] = callback
 
