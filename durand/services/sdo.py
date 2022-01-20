@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 import logging
 
 from durand.datatypes import DatatypeEnum as DT
-from durand.datatypes import struct_dict
 from durand.object_dictionary import Variable
 
 if TYPE_CHECKING:
@@ -78,9 +77,9 @@ class SDOServer:
         try:
             ccs = msg[0] & 0xE0
             if ccs == 0x20:  # request download
-                self.download(msg)
+                self.int_download(msg)
             elif ccs == 0x40:  # request upload
-                self.upload(msg)
+                self.init_upload(msg)
             else:
                 raise SDODomainAbort(0x05040001)  # SDO command not implemented
         except Exception as e:
@@ -106,7 +105,7 @@ class SDOServer:
 
         raise SDODomainAbort(0x06090011)  # subindex does not exist
 
-    def download(self, msg: bytes):
+    def init_download(self, msg: bytes):
         cmd, index, subindex = SDO_STRUCT.unpack(msg[:4])
 
         if not cmd & 0x02:  # expedited transfer
@@ -117,12 +116,10 @@ class SDOServer:
         if variable.access not in ('rw', 'wo'):
             raise SDODomainAbort(0x06010002)  # write a read-only object
 
-        dt_struct = struct_dict[variable.datatype]
-
         if cmd & 0x01:  # size specified
             size = 4 - ((cmd >> 2) & 0x03)
         else:
-            size = dt_struct.size
+            size = variable.size
 
         try:
             value = variable.unpack(msg[4:4+size])
@@ -143,7 +140,7 @@ class SDOServer:
         response = SDO_STRUCT.pack(0x60, index, subindex) + bytes(4)
         self._node.adapter.send(self._cob_txsdo, response)
 
-    def upload(self, msg_data: bytes):
+    def init_upload(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
 
         variable = self._lookup(index, subindex)
@@ -157,9 +154,9 @@ class SDOServer:
         except struct.error:
             raise SDODomainAbort(0x06090030)  # value range exceeded
 
-        cmd = 0x43 + ((4 - dt_struct.size) << 2)
+        cmd = 0x43 + ((4 - variable.size) << 2)
 
         response = SDO_STRUCT.pack(cmd, index, subindex) + data
-        response += bytes(4 - dt_struct.size)
+        response += bytes(4 - variable.size)
 
         self._node.adapter.send(self._cob_txsdo, response)
