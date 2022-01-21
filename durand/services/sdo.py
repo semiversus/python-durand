@@ -77,7 +77,7 @@ class SDOServer:
         try:
             ccs = msg[0] & 0xE0
             if ccs == 0x20:  # request download
-                self.int_download(msg)
+                self.init_download(msg)
             elif ccs == 0x40:  # request upload
                 self.init_upload(msg)
             else:
@@ -86,8 +86,8 @@ class SDOServer:
             code = 0x08000000  # general error
             if isinstance(e, SDODomainAbort):
                 code = e.code
-
-            log.exception('Exception during processing %r', msg)
+            else:
+                log.exception('Exception during processing %r', msg)
 
             _, index, subindex = SDO_STRUCT.unpack(msg[:4])
             response = SDO_STRUCT.pack(0x80, index, subindex)

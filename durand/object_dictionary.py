@@ -79,10 +79,13 @@ class ObjectDictionary:
             defaultdict(list)
         self._update_callbacks: Dict[Variable, List[Callable]] = \
             defaultdict(list)
+        self._download_callbacks: Dict[Variable, List[Callable]] = \
+            defaultdict(list)
         self._read_callbacks: Dict[Variable, Callable] = dict()
 
     def add_object(self, variable: Variable):
         self._variables[variable.multiplexor] = variable
+        self._data[variable] = 0
 
         if variable.subindex == 0:
             return
@@ -102,7 +105,7 @@ class ObjectDictionary:
     def lookup(self, index: int, subindex: int = 0) -> Variable:
         return self._variables[(index, subindex)]
 
-    def write(self, variable: Variable, value: Any):
+    def write(self, variable: Variable, value: Any, downloaded: bool=True):
         for callback in self._validate_callbacks[variable]:
             callback(value)  # may raises a exception
 
@@ -114,11 +117,26 @@ class ObjectDictionary:
             except Exception as e:
                 log.exception(f'Writing {value!r} to {variable!r} raised an {e!r}')
 
+        if not downloaded:
+            return
+
+        for callback in self._download_callbacks[variable]:
+            try:
+                callback(value)
+            except Exception as e:
+                log.exception(f'Writing {value!r} to {variable!r} raised an {e!r}')
+
     def add_validate_callback(self, variable: Variable, callback):
         self._validate_callbacks[variable].append(callback)
 
     def remove_validate_callback(self, variable: Variable, callback):
         self._validate_callbacks[variable].remove(callback)
+
+    def add_download_callback(self, variable: Variable, callback):
+        self._download_callbacks[variable].append(callback)
+
+    def remove_download_callback(self, variable: Variable, callback):
+        self._download_callbacks[variable].remove(callback)
 
     def add_update_callback(self, variable: Variable, callback):
         self._update_callbacks[variable].append(callback)

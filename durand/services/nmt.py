@@ -34,12 +34,12 @@ class NMTService:
         if node_id not in (0, self._node.node_id):  # 0 is used for broadcast
             return
 
-        if cs == 0x01 and self.state in (StateEnum.PRE_OPERATIONAL, StateEnum.STOPPED):
-            self.set_state(StateEnum.OPERATIONAL)  # start node
-        elif cs == 0x02 and self.state in (StateEnum.PRE_OPERATIONAL, StateEnum.OPERATIONAL):
-            self.set_state(StateEnum.STOPPED)  # stop node
-        elif cs == 0x80 and self.state in (StateEnum.OPERATIONAL, StateEnum.STOPPED):
-            self.set_state(StateEnum.PRE_OPERATIONAL)  # enter pre-operational
+        if cs == 0x01:  # start node
+            self.set_state(StateEnum.OPERATIONAL)
+        elif cs == 0x02:  # stop node
+            self.set_state(StateEnum.STOPPED)
+        elif cs == 0x80:  # enter pre-operational
+            self.set_state(StateEnum.PRE_OPERATIONAL)
         elif cs in (0x81, 0x82):  # Reset Node or Reset Communication
             self.set_state(StateEnum.INITIALISATION)
             self.set_state(StateEnum.PRE_OPERATIONAL)
