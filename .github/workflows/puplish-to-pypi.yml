@@ -18,6 +18,7 @@ jobs:
         pip install
         build
         --user
+    - run: pip install -r requirements_dev.txt --user
     - name: Build a binary wheel and a source tarball
       run: >-
         python -m
