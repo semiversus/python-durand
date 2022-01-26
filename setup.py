@@ -15,6 +15,7 @@ setup(
     use_scm_version={"write_to": "durand/_version.py"},
     description='CANOpen library providing functionality to implement nodes',
     long_description=readme,
+    long_description_content_type='text/x-rst',
     url='https://github.com/semiversus/python-durand',
     author='Günther Jena',
     author_email='guenther@jena.at',
