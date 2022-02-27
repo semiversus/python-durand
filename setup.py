@@ -11,9 +11,14 @@ with open('README.rst', 'rb') as readme_file:
 
 
 setup(
+    name='durand',
+    use_scm_version={"write_to": "durand/_version.py"},
+    description='CANOpen library providing functionality to implement nodes',
+    long_description=readme,
+    long_description_content_type='text/x-rst',
+    url='https://github.com/semiversus/python-durand',
     author='Günther Jena',
     author_email='guenther@jena.at',
-    use_scm_version={"write_to": "durand/_version.py"},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -23,14 +28,11 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
-    description='CANOpen library providing functionality to implement nodes',
+    python_requires='>=3.7',
     license='MIT license',
-    long_description=readme,
-    include_package_data=True,
     keywords='canopen can node ds301',
-    name='durand',
     packages=find_packages(include=['durand*']),
-    url='https://github.com/semiversus/python-durand',
     zip_safe=False,
 )
