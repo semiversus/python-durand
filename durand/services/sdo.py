@@ -22,56 +22,86 @@ class SDODomainAbort(Exception):
 
 
 class SDOServer:
-    def __init__(self, node: 'Node', index=0):
+    def __init__(self, node: 'Node', index=0, cob_rx: int=None, cob_tx: int=None):
         self._node = node
-        self._index = index
 
-        if index:
-            self._cob_rxsdo = 0x80000000
-            self._cob_txsdo = 0x80000000
+        if cob_rx is None:
+            self._cob_rx = 0x80000000
         else:
-            self._cob_rxsdo = 0x600 + node.node_id
-            self._cob_txsdo = 0x580 + node.node_id
+            self._cob_rx = cob_rx
+
+        if cob_tx is None:
+            self._cob_tx = 0x80000000
+        else:
+            self._cob_tx = cob_tx
 
         od = self._node.object_dictionary
         od.add_object(Variable(0x1200 + index, 0, DT.UNSIGNED8,
                       'const', 3 if index else 2))
 
-        cob_rxsdo = Variable(0x1200 + index, 1, DT.UNSIGNED32,
-                             'rw' if index else 'const', self._cob_rxsdo)
-        od.add_object(cob_rxsdo)
+        cob_rx_var = Variable(0x1200 + index, 1, DT.UNSIGNED32,
+                             'rw' if index else 'ro', self._cob_rx)
+        od.add_object(cob_rx_var)
 
-        cob_txsdo = Variable(0x1200 + index, 2, DT.UNSIGNED32,
-                             'rw' if index else 'const', self._cob_txsdo)
-        od.add_object(cob_txsdo)
+        cob_tx_var = Variable(0x1200 + index, 2, DT.UNSIGNED32,
+                             'rw' if index else 'ro', self._cob_tx)
+        od.add_object(cob_tx_var)
 
         if index:
-            od.add_update_callback(cob_rxsdo, self._update_cob_rxsdo)
-            od.add_update_callback(cob_txsdo, self._update_cob_txsdo)
-        else:
-            od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8,
-                                   'rw' if index else 'ro'))
-            self._node.add_subscription(self._cob_rxsdo, self.handle_msg)
+            od.add_download_callback(cob_rx, self._update_cob_rx)
+            od.add_download_callback(cob_tx, self._update_cob_tx)
 
-    def _update_cob_rxsdo(self, value: int):
+            od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, 'rw'))
+        
+        self._node.add_subscription(self._cob_rx, self.handle_msg)
+
+    def _update_cob_rx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
-        if not (self._cob_rxsdo | self._cob_txsdo) & (1 << 31):
-            self._node.remove_subscription(self._cob_rxsdo & 0x7FF)
+        if ((self._cob_rx & self._cob_tx) & (1 << 31)) and not value & (1 << 31):
+            self._node.remove_subscription(self._cob_rx & 0x7FF)
 
-        self._cob_rxsdo = value
-
-        if not (value | self._cob_txsdo) & (1 << 31):
+        if not self._cob_rx & (1 << 31) and value & (1 << 31) and self._cob_tx & (1 << 31):
             self._node.add_subscription(value & 0x7FF)
 
-    def _update_cob_txsdo(self, value: int):
+        self._cob_rx = value
+
+    def _update_cob_tx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
-        if not (self._cob_rxsdo | self._cob_txsdo) & (1 << 31):
-            self._node.remove_subscription(self._cob_rxsdo & 0x7FF)
+        if ((self._cob_rx & self._cob_tx) & (1 << 31)) and not value & (1 << 31):
+            self._node.remove_subscription(self._cob_rx & 0x7FF)
 
-        self._cob_txsdo = value
+        if not self._cob_tx & (1 << 31) and value & (1 << 31) and self._cob_rx & (1 << 31):
+            self._node.add_subscription(self._cob_rx & 0x7FF)
 
-        if not (value | self._cob_rxsdo) & (1 << 31):
-            self._node.add_subscription(self._cob_rxsdo & 0x7FF)
+        self._cob_rx = value
+
+    @property
+    def cob_tx(self):
+        if self._cob_tx & (1 << 31):
+            return None
+
+        return self._cob_tx
+    
+    @cob_tx.setter
+    def cob_tx(self, cob: int):
+        if cob is None:
+            self._update_cob_tx(1 << 31)
+        else:
+            self._update_cob_tx(cob)
+
+    @property
+    def cob_rx(self):
+        if self._cob_rx & (1 << 31):
+            return None
+
+        return self._cob_rx
+    
+    @cob_rx.setter
+    def cob_rx(self, cob: int):
+        if cob is None:
+            self._update_cob_rx(1 << 31)
+        else:
+            self._update_cob_rx(cob)
 
     def handle_msg(self, cob_id: int, msg: bytes):
         try:
@@ -92,7 +122,7 @@ class SDOServer:
             _, index, subindex = SDO_STRUCT.unpack(msg[:4])
             response = SDO_STRUCT.pack(0x80, index, subindex)
             response += struct.pack('<I', code)
-            self._node.adapter.send(self._cob_txsdo, response)
+            self._node.adapter.send(self._cob_tx, response)
 
     def _lookup(self, index: int, subindex: int) -> Variable:
         try:
@@ -138,7 +168,7 @@ class SDOServer:
             raise SDODomainAbort(0x08000020)  # data can't be stored
 
         response = SDO_STRUCT.pack(0x60, index, subindex) + bytes(4)
-        self._node.adapter.send(self._cob_txsdo, response)
+        self._node.adapter.send(self._cob_tx, response)
 
     def init_upload(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
@@ -159,4 +189,4 @@ class SDOServer:
         response = SDO_STRUCT.pack(cmd, index, subindex) + data
         response += bytes(4 - variable.size)
 
-        self._node.adapter.send(self._cob_txsdo, response)
+        self._node.adapter.send(self._cob_tx, response)
