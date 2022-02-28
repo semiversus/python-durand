@@ -2,6 +2,7 @@ from enum import IntEnum
 import logging
 from typing import TYPE_CHECKING
 
+from ..callback_handler import CallbackHandler
 
 if TYPE_CHECKING:
     from ..node import Node
@@ -20,7 +21,7 @@ class StateEnum(IntEnum):
 class NMTService:
     def __init__(self, node: 'Node'):
         self._node = node
-        self._state_callbacks = list()
+        self.state_callbacks = CallbackHandler()
 
         self.state = None
 
@@ -54,11 +55,6 @@ class NMTService:
             # send bootup message
             self._node.adapter.send(0x700 + self._node.node_id, b'\x00')
 
-        for callback in self._state_callbacks:
-            callback(state)
+        self.state_callbacks.call(state)
 
         self.state = state
-
-    def add_state_callback(self, callback):
-        self._state_callbacks.append(callback)
-        callback(self.state)

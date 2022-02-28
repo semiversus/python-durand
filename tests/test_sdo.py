@@ -41,7 +41,7 @@ def test_sdo_expitited_download(datatype):
     n.object_dictionary.add_object(v)
 
     mock_write = Mock()
-    n.object_dictionary.add_update_callback(v, mock_write)
+    n.object_dictionary.update_callbacks[v].add(mock_write)
 
     mock_write.assert_not_called()
     adapter.tx_mock.reset_mock()

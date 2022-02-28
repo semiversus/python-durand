@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Tuple, Callable
 import logging
 
 from .datatypes import DatatypeEnum, struct_dict
+from .callback_handler import CallbackHandler, FailMode
 
 
 log = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class Variable:
             raise ValueError('Invalid access type')
 
     @property
-    def multiplexor(self):
+    def multiplexor(self) -> Tuple[int, int]:
         return (self.index, self.subindex)
 
     @property
@@ -55,7 +56,7 @@ class Variable:
     def on_update(self, od: 'ObjectDictionary'):
         # it's called via @variable.on_update(od) wrapping a function
         def wrap(func):
-            od.add_update_callback(self, func)
+            od.update_callbacks[self].add(func)
         return wrap
 
     def pack(self, value) -> bytes:
@@ -75,12 +76,12 @@ class ObjectDictionary:
         self._variables: Dict[Tuple[int, int], Variable] = dict()
         self._data: Dict[Variable, Any] = dict()
 
-        self._validate_callbacks: Dict[Variable, List[Callable]] = \
-            defaultdict(list)
-        self._update_callbacks: Dict[Variable, List[Callable]] = \
-            defaultdict(list)
-        self._download_callbacks: Dict[Variable, List[Callable]] = \
-            defaultdict(list)
+        self.validate_callbacks: Dict[Variable, CallbackHandler] = \
+            defaultdict(lambda: CallbackHandler(fail_mode=FailMode.FIRST_FAIL))
+        self.update_callbacks: Dict[Variable, CallbackHandler] = \
+            defaultdict(CallbackHandler)
+        self.download_callbacks: Dict[Variable, CallbackHandler] = \
+            defaultdict(CallbackHandler)
         self._read_callbacks: Dict[Variable, Callable] = dict()
 
     def add_object(self, variable: Variable):
@@ -106,43 +107,14 @@ class ObjectDictionary:
         return self._variables[(index, subindex)]
 
     def write(self, variable: Variable, value: Any, downloaded: bool=True):
-        for callback in self._validate_callbacks[variable]:
-            callback(value)  # may raises a exception
-
+        self.validate_callbacks[variable].call(value)
         self._data[variable] = value
-
-        for callback in self._update_callbacks[variable]:
-            try:
-                callback(value)
-            except Exception as e:
-                log.exception(f'Writing {value!r} to {variable!r} raised an {e!r}')
+        self.update_callbacks[variable].call(value)
 
         if not downloaded:
             return
 
-        for callback in self._download_callbacks[variable]:
-            try:
-                callback(value)
-            except Exception as e:
-                log.exception(f'Writing {value!r} to {variable!r} raised an {e!r}')
-
-    def add_validate_callback(self, variable: Variable, callback):
-        self._validate_callbacks[variable].append(callback)
-
-    def remove_validate_callback(self, variable: Variable, callback):
-        self._validate_callbacks[variable].remove(callback)
-
-    def add_download_callback(self, variable: Variable, callback):
-        self._download_callbacks[variable].append(callback)
-
-    def remove_download_callback(self, variable: Variable, callback):
-        self._download_callbacks[variable].remove(callback)
-
-    def add_update_callback(self, variable: Variable, callback):
-        self._update_callbacks[variable].append(callback)
-
-    def remove_update_callback(self, variable: Variable, callback):
-        self._update_callbacks[variable].remove(callback)
+        self.download_callbacks[variable].call(value)
 
     def read(self, variable: Variable):
         if variable in self._read_callbacks:

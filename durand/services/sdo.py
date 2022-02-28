@@ -1,5 +1,6 @@
 import struct
-from typing import TYPE_CHECKING
+from enum import Enum
+from typing import TYPE_CHECKING, Tuple
 import logging
 
 from durand.datatypes import DatatypeEnum as DT
@@ -19,6 +20,16 @@ class SDODomainAbort(Exception):
     def __init__(self, code: int):
         Exception.__init__(self)
         self.code = code
+
+
+TransferDirection = Enum('TransferDirection', 'UPLOAD DOWNLOAD')
+
+
+class TransferState:
+    def __init__(self, multiplexor: Tuple[int, int], direction: TransferDirection):
+        self.multiplexor = multiplexor
+        self.direction = direction
+        self._toggle_bit = False
 
 
 class SDOServer:
@@ -48,8 +59,8 @@ class SDOServer:
         od.add_object(cob_tx_var)
 
         if index:
-            od.add_download_callback(cob_rx, self._update_cob_rx)
-            od.add_download_callback(cob_tx, self._update_cob_tx)
+            od.download_callbacks[cob_rx].add(self._update_cob_rx)
+            od.download_callbacks[cob_tx].add(self._update_cob_tx)
 
             od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, 'rw'))
         
