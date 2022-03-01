@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Callable
 import logging
 
-from .datatypes import DatatypeEnum, struct_dict
+from .datatypes import DatatypeEnum, struct_dict, is_numeric
 from .callback_handler import CallbackHandler, FailMode
 
 
@@ -30,6 +30,9 @@ class Variable:
             raise ValueError('Unsupported datatype')
         if self.access not in ('rw', 'ro', 'wo', 'const'):
             raise ValueError('Invalid access type')
+        if (not is_numeric(self.datatype) and
+            (self.maximum is not None or self.minimum is not None)):
+                raise ValueError('Minimum and Maximum not available with datatype %rs' % self.datatype)
 
     @property
     def multiplexor(self) -> Tuple[int, int]:

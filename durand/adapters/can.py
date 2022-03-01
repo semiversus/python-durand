@@ -12,10 +12,10 @@ class CANAdapter(AdapterABC):
     def __init__(self, *args, loop=None, **kwargs):
         self._bus = can.Bus(*args, **kwargs)
         self._loop = loop
-        
+
         self.lock = Lock()
         self.subscriptions = dict()
-        
+
         listener = NodeListener(self)
         can.Notifier(self._bus, (listener,), 1, self._loop)
 

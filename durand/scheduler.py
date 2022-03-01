@@ -38,10 +38,7 @@ class AbstractScheduler(metaclass=ABCMeta):
 
 class AsyncScheduler(AbstractScheduler):
     def __init__(self, loop=None):
-        if loop is None:
-            self._loop = asyncio.get_event_loop()
-        else:
-            self._loop = loop
+        self._loop = loop
 
         self._lock = threading.Lock()
 
@@ -49,7 +46,8 @@ class AsyncScheduler(AbstractScheduler):
         if kwargs:
             callback = functools.partial(callback, **kwargs)
 
-        return self._loop.call_later(delay, callback, *args)
+        loop = self._loop or asyncio.get_event_loop()
+        return loop.call_later(delay, callback, *args)
 
     def cancel(self, entry: asyncio.TimerHandle):
         entry.cancel()

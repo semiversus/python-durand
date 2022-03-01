@@ -19,10 +19,10 @@ class TPDO:
 
     def map_objects(self, *variables: Variable):
         for variable in self._objects:
-            self._node.object_dictionary.remove_update_callback(variable, self._on_change)
+            self._node.object_dictionary.update_callbacks[variable].remove(self._on_change)
 
         for variable in variables:
-            self._node.object_dictionary.add_update_callback(variable, self._on_change)
+            self._node.object_dictionary.update_callbacks[variable].add(self._on_change)
 
         self._objects = variables
 
