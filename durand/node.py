@@ -17,9 +17,6 @@ class Node:
         od = ObjectDictionary() if od is None else od
         self.object_dictionary = od
 
-        self._subscriptions = dict()
-        adapter.bind(self._subscriptions)
-
         self.nmt = NMTService(self)
         self.tpdo = {i: TPDO(self, i) for i in range(1, 5)}
         self.rpdo = {i: RPDO(self, i) for i in range(1, 5)}
@@ -38,9 +35,3 @@ class Node:
     def add_sdo_server(self, index: int, cob_rx: int=None, cob_tx: int=None):
         assert index not in self.sdo_servers, f'Server {index} already added'
         self.sdo_servers[index] = SDOServer(self, index, cob_rx, cob_tx)
-
-    def add_subscription(self, cob_id: int, callback):
-        self._subscriptions[cob_id] = callback
-
-    def remove_subscription(self, cob_id: int):
-        self._subscriptions.pop(cob_id)

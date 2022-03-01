@@ -1,6 +1,6 @@
 import struct
 from enum import Enum
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, final
 import logging
 
 from durand.datatypes import DatatypeEnum as DT
@@ -26,15 +26,19 @@ TransferDirection = Enum('TransferDirection', 'UPLOAD DOWNLOAD')
 
 
 class TransferState:
-    def __init__(self, multiplexor: Tuple[int, int], direction: TransferDirection):
-        self.multiplexor = multiplexor
+    def __init__(self, variable: Variable, direction: TransferDirection, size: int = None):
+        self.variable = variable
         self.direction = direction
+        self.size = size
+        
         self._toggle_bit = False
+        self.buffer: bytearray = None
 
 
 class SDOServer:
     def __init__(self, node: 'Node', index=0, cob_rx: int=None, cob_tx: int=None):
         self._node = node
+        self._transfer_state = None
 
         if cob_rx is None:
             self._cob_rx = 0x80000000
@@ -64,7 +68,7 @@ class SDOServer:
 
             od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, 'rw'))
         
-        self._node.add_subscription(self._cob_rx, self.handle_msg)
+        self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
 
     def _update_cob_rx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
@@ -72,7 +76,7 @@ class SDOServer:
             self._node.remove_subscription(self._cob_rx & 0x7FF)
 
         if not self._cob_rx & (1 << 31) and value & (1 << 31) and self._cob_tx & (1 << 31):
-            self._node.add_subscription(value & 0x7FF)
+            self._node.adapter.add_subscription(value & 0x7FF)
 
         self._cob_rx = value
 
@@ -82,7 +86,7 @@ class SDOServer:
             self._node.remove_subscription(self._cob_rx & 0x7FF)
 
         if not self._cob_tx & (1 << 31) and value & (1 << 31) and self._cob_rx & (1 << 31):
-            self._node.add_subscription(self._cob_rx & 0x7FF)
+            self._node.adapter.add_subscription(self._cob_rx & 0x7FF)
 
         self._cob_rx = value
 
@@ -116,10 +120,13 @@ class SDOServer:
 
     def handle_msg(self, cob_id: int, msg: bytes):
         try:
-            ccs = msg[0] & 0xE0
-            if ccs == 0x20:  # request download
+            ccs = (msg[0] & 0xE0) >> 5
+
+            if ccs == 1:  # init download
                 self.init_download(msg)
-            elif ccs == 0x40:  # request upload
+            elif ccs == 0:  # download segment
+                self.download_segment(msg)
+            elif ccs == 2:  # init upload
                 self.init_upload(msg)
             else:
                 raise SDODomainAbort(0x05040001)  # SDO command not implemented
@@ -149,14 +156,23 @@ class SDOServer:
     def init_download(self, msg: bytes):
         cmd, index, subindex = SDO_STRUCT.unpack(msg[:4])
 
-        if not cmd & 0x02:  # expedited transfer
-            raise SDODomainAbort(0x05040001)  # SDO command not implemented
-
         variable = self._lookup(index, subindex)
 
         if variable.access not in ('rw', 'wo'):
             raise SDODomainAbort(0x06010002)  # write a read-only object
+        
+        response = SDO_STRUCT.pack(0x60, index, subindex) + bytes(4)
 
+        if not cmd & 0x02:  # segmented transfer (not expitited)
+            if cmd & 0x01:  # size specified
+                size = int.from_bytes(msg[4:], 'little')
+            else:
+                size = None
+
+            self._transfer_state = TransferState(variable, TransferDirection.DOWNLOAD, size=size)
+            self._node.adapter.send(self._cob_tx, response)
+            return
+        
         if cmd & 0x01:  # size specified
             size = 4 - ((cmd >> 2) & 0x03)
         else:
@@ -178,8 +194,46 @@ class SDOServer:
         except Exception:
             raise SDODomainAbort(0x08000020)  # data can't be stored
 
-        response = SDO_STRUCT.pack(0x60, index, subindex) + bytes(4)
         self._node.adapter.send(self._cob_tx, response)
+
+    def download_segment(self, msg: bytes):
+        if self._transfer_state is None or self._transfer_state.direction != TransferDirection.DOWNLOAD:
+            raise SDODomainAbort(0x05040001)  # client command specificer not valid
+
+        toggle_bit = bool(msg[0] & 0x10)
+        
+        if toggle_bit != self._transfer_state._toggle_bit:
+            self._transfer_state = None
+            raise SDODomainAbort(0x05030000)  # toggle bit not altered
+        
+        size = 7 - ((msg[0] & 0x0E) >> 1)
+        data = msg[1: 1 + size]
+
+        self.download_segment_callback(self._transfer_state.variable, data)
+        
+        if msg[0] & 0x01:  # check continue bit
+            self.download_segment_callback(self._transfer_state.variable, None)
+
+        cmd = 0x20 + (toggle_bit << 4)
+        self._node.adapter.send(self._cob_tx, cmd.to_bytes(1, 'little') + bytes(7))
+
+    def download_segment_callback(self, variable: Variable, data: bytes, size: int):
+        """ Default implementation of te download_segment_callback
+        
+        :param variable: Variable the data will be stored in
+        :param data: bytes to be appended, None is used to signalize a complete transmission
+        :param size: total size of download in bytes (if available, otherwise None)
+        """
+        if data:
+            self._transfer_state.buffer.append(data)
+            return
+
+        try:
+            self._node.object_dictionary.write(variable, self._transfer_state.buffer)
+        except Exception:
+            raise SDODomainAbort(0x08000020)  # data can't be stored
+        finally:
+            self._transfer_state = None
 
     def init_upload(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])

@@ -47,7 +47,7 @@ class RPDO:
         self._node = node
 
         cob_id = 0x200 + (index - 1) * 0x100 + node.node_id
-        node.add_subscription(cob_id=cob_id, callback=self.handle_msg)
+        node.adapter.add_subscription(cob_id=cob_id, callback=self.handle_msg)
 
         self._objects = ()
 

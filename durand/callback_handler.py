@@ -1,4 +1,8 @@
 from enum import Enum
+import logging
+
+
+log = logging.getLogger(__name__)
 
 
 class FailMode(Enum):
@@ -29,6 +33,8 @@ class CallbackHandler:
                     exception = e
                 elif self._fail_mode == FailMode.FIRST_FAIL:
                     raise e
+                else:
+                    log.debug('Ignored exception in callback handler', exc_info=True)
         
         if exception:
             raise exception

@@ -3,13 +3,17 @@ from typing import Dict, Callable
 
 
 class AdapterABC(metaclass=ABCMeta):
-    @abstractmethod
-    def bind(self, subscriptions: Dict[int, Callable]):
-        """ Use subscription dictionary to distribute CAN messages
-        to the according callback
+    @abstractmethod    
+    def add_subscription(self, cob_id: int, callback):
+        """ add subscription
+        :param cob_id: cob_id to subscribe
+        :param callback: to be called when cob_id is received
+        """
 
-        :param subscriptions: dictionary for with COB ID as key and callback as
-                              value
+    @abstractmethod
+    def remove_subscription(self, cob_id: int):
+        """ remove subscription
+        :param cob_id: remove subscription for cob_id
         """
 
     @abstractmethod

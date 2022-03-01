@@ -1,13 +1,22 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
+from durand.services.sdo import SDO_STRUCT
 
 from .adapter import MockAdapter
 
+def build_sdo_packet(cs: int, index: int, subindex: int=0, data: bytes=b'', toggle: bool=False):
+    cmd = (cs << 5) + (toggle << 4)
+    
+    if data:
+        cmd += ((4 - len(data)) << 2) + 3  # set size and expetited
+    
+    return SDO_STRUCT.pack(cmd, index, subindex) + data + bytes(4 - len(data))
+        
 
 @pytest.mark.parametrize('node_id', [0x01, 0x7F])
 def test_sdo_object_dictionary(node_id):
@@ -64,3 +73,49 @@ def test_sdo_expitited_download(datatype):
 
     value = struct_dict[datatype].unpack(b'\x04\x03\x02\x01'[:size])[0]
     mock_write.assert_called_once_with(value)
+
+def test_sdo_download_fails():
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+
+    # write 'const' and 'ro' variables
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x1200, data=b'AB'))  # const entry
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x12\x00\x02\x00\x01\x06')
+
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x1200, subindex=1, data=b'AB'))  # ro entry
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x12\x01\x02\x00\x01\x06')
+
+    # data size not matching
+    var = Variable(0x2000, 0, DT.UNSIGNED8, 'rw', minimum=0x10, maximum=0x20)
+    n.object_dictionary.add_object(var)
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b'AB'))  # write to bytes to unsigned8
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x10\x00\x07\x06')
+
+    # value to low or high
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b'\x0F'))  # write 15 (below minimum of 16)
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x32\x00\x09\x06')
+
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b'\x21'))  # write 33 (above maximum of 32)
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x31\x00\x09\x06')
+
+    adapter.tx_mock.reset_mock()
+    
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b'\x10'))  # write 16 (ok with minimum of 16)
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b'\x20'))  # write 32 (ok with maximum of 32)
+    adapter.tx_mock.assert_has_calls([call(0x582, build_sdo_packet(3, 0x2000)), call(0x582, build_sdo_packet(3, 0x2000)) ])
+
+    # write not working
+    def fail(value):
+        raise ValueError('Validation failed')
+
+    n.object_dictionary.validate_callbacks[var].add(fail)
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b'\x10'))  # write 16 (ok with minimum of 16)
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x20\x00\x00\x08')
+
+    # object not existing
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001, data=b'\x10'))  # write non existing object
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x01\x20\x00\x00\x00\x02\x06')
+
+    # subindex not existing
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, subindex= 1, data=b'\x10'))  # write non existing object
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x01\x11\x00\x09\x06')

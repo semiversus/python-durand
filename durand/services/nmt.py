@@ -25,7 +25,7 @@ class NMTService:
 
         self.state = None
 
-        node.add_subscription(cob_id=0, callback=self.handle_msg)
+        node.adapter.add_subscription(cob_id=0, callback=self.handle_msg)
 
         self.set_state(StateEnum.INITIALISATION)
 

@@ -107,7 +107,7 @@ class ObjectDictionary:
         return self._variables[(index, subindex)]
 
     def write(self, variable: Variable, value: Any, downloaded: bool=True):
-        self.validate_callbacks[variable].call(value)
+        self.validate_callbacks[variable].call(value)  # may raises exception
         self._data[variable] = value
         self.update_callbacks[variable].call(value)
 
