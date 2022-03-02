@@ -22,6 +22,8 @@ class DatatypeEnum(IntEnum):
 def is_numeric(datatype: DatatypeEnum):
     return datatype not in (DatatypeEnum.VISIBLE_STRING, DatatypeEnum.OCTET_STRING, DatatypeEnum.DOMAIN)
 
+def is_float(datatype: DatatypeEnum):
+    return datatype in (DatatypeEnum.REAL32, DatatypeEnum.REAL64)
 
 struct_dict = {
     DatatypeEnum.UNSIGNED8: Struct('B'),

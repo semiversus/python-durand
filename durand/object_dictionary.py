@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Callable
 import logging
 
-from .datatypes import DatatypeEnum, struct_dict, is_numeric
+from .datatypes import DatatypeEnum, struct_dict, is_numeric, is_float
 from .callback_handler import CallbackHandler, FailMode
 
 
@@ -63,14 +63,28 @@ class Variable:
         return wrap
 
     def pack(self, value) -> bytes:
-        value = int(value / self.factor)
+        if not is_numeric(self.datatype):
+            return bytes(value)
+
+        value = value / self.factor
         dt_struct = struct_dict[self.datatype]
+        
+        if not is_float(self.datatype):
+            value = int(value)
+
         return dt_struct.pack(value)
 
     def unpack(self, data: bytes):
+        if not is_numeric(self.datatype):
+            return bytes(data)
+
         dt_struct = struct_dict[self.datatype]
         value = dt_struct.unpack(data)[0]
         value *= self.factor
+
+        if not is_float(self.datatype):
+            value = int(value)
+
         return value
 
 
@@ -89,7 +103,7 @@ class ObjectDictionary:
 
     def add_object(self, variable: Variable):
         self._variables[variable.multiplexor] = variable
-        self._data[variable] = 0
+        self._data[variable] = variable.default
 
         if variable.subindex == 0:
             return

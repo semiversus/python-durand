@@ -1,11 +1,11 @@
 import struct
 from enum import Enum
-from typing import TYPE_CHECKING, Tuple, final
+from typing import TYPE_CHECKING
 import logging
 
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import is_numeric
-from durand.object_dictionary import ObjectDictionary, Variable
+from durand.object_dictionary import Variable
 
 if TYPE_CHECKING:
     from durand.node import Node
@@ -31,52 +31,39 @@ class TransferState:
     def __init__(self, variable: Variable, direction: TransferDirection):
         self.variable = variable
         self.direction = direction
+        self.manager = None
+
+        self.buffer = bytearray()
 
         # used for block transfer
         self.sequence_number = None
         self.use_crc = None
 
         # used for segmented transfer
-        self._toggle_bit = False
+        self.toggle_bit = False
 
 
-class DownloadManager:
-    def __init__(self, object_dictionary: ObjectDictionary):
-        self._object_dictionary = object_dictionary
-        self._variable = None
-        self._buffer = bytearray()
-
-    def on_init(self, variable: Variable, size: int=None):
-        self._variable = variable
-        self._buffer.clear()
-
+class BaseDownloadManager:
     def on_receive(self, data: bytes):
-        self._buffer.extend(data)
+        """ on_received is called when new data is received
+
+        :param data: bytes received and to be appended
+        """
 
     def on_finish(self):
-        value = parse_data(self._variable, self._buffer)
-
-        try:
-            self._object_dictionary.write(self._variable, value)
-        except Exception:
-            raise SDODomainAbort(0x08000020, self._variable)  # data can't be stored
-        finally:
-            self._variable = None
-            self._buffer.clear()
+        """ on_finish is called when the transfer is successfully completed
+        """
 
     def on_abort(self):
-        self._variable = None
-        self._buffer.clear()
+        """ on_abort is called when the transfer was aborted
+        """
 
 
 def parse_data(variable: Variable, data: bytes):
-    if is_numeric(variable.datatype):
-        try:
-            value = variable.unpack(data)
-        except struct.error:
-            raise SDODomainAbort(0x06070010, variable)  # datatype size is not matching
-    else:
-        value = bytes(data)
+    try:
+        value = variable.unpack(data)
+    except struct.error:
+        raise SDODomainAbort(0x06070010, variable)  # datatype size is not matching
 
     if variable.minimum is not None and value < variable.minimum:
         raise SDODomainAbort(0x06090032, variable)  # value too low
@@ -92,7 +79,7 @@ class SDOServer:
         self._node = node
         self._transfer_state = None
 
-        self.download_manager = DownloadManager(node.object_dictionary)
+        self.download_callback = None
 
         if cob_rx is None:
             self._cob_rx = 0x80000000
@@ -173,15 +160,30 @@ class SDOServer:
             self._update_cob_rx(cob)
 
     def handle_msg(self, cob_id: int, msg: bytes):
+        assert cob_id == self._cob_rx, 'Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})'
+        
         try:
             ccs = (msg[0] & 0xE0) >> 5
 
-            if ccs == 1:  # init download
-                self.init_download(msg)
+            if msg[0] == 0x80:  # abort
+                self.abort(msg)
+            elif self._transfer_state and self._transfer_state.direction in (
+                TransferDirection.DOWNLOAD_BLOCK, TransferDirection.UPLOAD_BLOCK):
+                if self._transfer_state.direction == TransferDirection.DOWNLOAD_BLOCK:
+                    self.download_sub_block(msg)
+                else:
+                    self.upload_sub_block(msg)
             elif ccs == 0:  # download segment
                 self.download_segment(msg)
+            elif ccs == 1:  # init download
+                self.init_download(msg)
             elif ccs == 2:  # init upload
                 self.init_upload(msg)
+            elif ccs == 6:  # init/end download block
+                if msg[0] & 0x01:  # end block transfer
+                    self.download_block_end(msg)
+                else:  # init block transfer
+                    self.download_block_init(msg)
             else:
                 raise SDODomainAbort(0x05040001)  # SDO command not implemented
         except Exception as e:
@@ -230,7 +232,9 @@ class SDOServer:
                 size = None
 
             self._transfer_state = TransferState(variable, TransferDirection.DOWNLOAD)
-            self.download_manager.on_init(variable, size)
+
+            if self.download_callback:
+                self._transfer_state.manager = self.download_callback(self._node, variable, size)
 
             self._node.adapter.send(self._cob_tx, response)
             return
@@ -255,27 +259,64 @@ class SDOServer:
 
         toggle_bit = bool(msg[0] & 0x10)
 
-        if toggle_bit != self._transfer_state._toggle_bit:
+        if toggle_bit != self._transfer_state.toggle_bit:
             variable = self._transfer_state.variable
             self._transfer_state = None
             raise SDODomainAbort(0x05030000, variable)  # toggle bit not altered
 
-        self._transfer_state._toggle_bit = not self._transfer_state._toggle_bit
+        self._transfer_state.toggle_bit = not self._transfer_state.toggle_bit
 
         size = 7 - ((msg[0] & 0x0E) >> 1)
         data = msg[1: 1 + size]
 
-        self.download_manager.on_receive(data)
+        if self._transfer_state.manager:
+            self._transfer_state.manager.on_receive(data)
+        else:
+            self._transfer_state.buffer.extend(data)
 
         if msg[0] & 0x01:  # check continue bit
             try:
-                self.download_manager.on_finish()
+                if self._transfer_state.manager:
+                    self._transfer_state.manager.on_finish()
+                else:
+                    value = parse_data(self._transfer_state.variable, self._transfer_state.buffer)
+                    self._node.object_dictionary.write(self._transfer_state.variable, value)
+            except SDODomainAbort as e:
+                raise e
+            except Exception as e:
+                raise SDODomainAbort(0x08000020, self._transfer_state.variable)  # data can't be stored
             finally:
+                self._transfer_state.buffer.clear()
                 self._transfer_state = None
 
         cmd = 0x20 + (toggle_bit << 4)
         self._node.adapter.send(self._cob_tx, cmd.to_bytes(1, 'little') + bytes(7))
 
+    def download_block_init(self, msg: bytes):
+        cmd, index, subindex = SDO_STRUCT.unpack(msg[:4])
+
+        variable = self._lookup(index, subindex)
+
+        if variable.access not in ('rw', 'wo'):
+            raise SDODomainAbort(0x06010002)  # write a read-only object
+
+        self._transfer_state = TransferState(variable, TransferDirection.DOWNLOAD_BLOCK)
+        
+        self._transfer_state.use_crc = bool(cmd & 0x04)
+
+        if cmd & 0x02:  # size bit
+            size = struct.unpack('<I', msg[4:])
+        else:
+            size = None
+        
+        self._transfer_state.sequence_number = 0
+
+        cmd = 0xA4
+        self._node.adapter.send(self._cob_tx, cmd.to_bytes(1, 'little') + msg[1: 4] + b'\x7F' + bytes(3))
+
+    def download_sub_block(self, msg: bytes):
+        pass
+        
     def init_upload(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
 
@@ -284,11 +325,12 @@ class SDOServer:
         if variable.access not in ('ro', 'rw', 'constant'):
             raise SDODomainAbort(0x06010001)  # read a write-only object
 
-        value = self._node.object_dictionary.read(variable)
         try:
+            value = self._node.object_dictionary.read(variable)
             data = variable.pack(value)
-        except struct.error:
-            raise SDODomainAbort(0x06090030)  # value range exceeded
+        except Exception:
+            log.exception(f'Exception while reading {variable}')
+            raise SDODomainAbort(0x06060000)  # access failed
 
         cmd = 0x43 + ((4 - variable.size) << 2)
 
@@ -296,3 +338,13 @@ class SDOServer:
         response += bytes(4 - variable.size)
 
         self._node.adapter.send(self._cob_tx, response)
+    
+    def abort(self, msg_data: bytes):
+        _, *multiplexor = SDO_STRUCT.unpack(msg_data[:4])
+
+        if self._transfer_state and self._transfer_state.variable.multiplexor == tuple(multiplexor):
+            if self._transfer_state.manager:
+                self._transfer_state.manager.on_abort()
+            self._transfer_state.buffer.clear()
+            self._transfer_state = None
+            return

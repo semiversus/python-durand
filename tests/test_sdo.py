@@ -250,10 +250,77 @@ def test_sdo_download_segmented_fails():
     adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x00\x00\x03\x05')
 
     # write not working
+    var = Variable(0x2001, 0, DT.UNSIGNED8, 'rw')
+    n.object_dictionary.add_object(var)
+
     def fail(value):
         raise ValueError('Validation failed')
 
     n.object_dictionary.validate_callbacks[var].add(fail)
-    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
     adapter.receive(0x602, b'\x0D\x10' + bytes(6))  # write 16
-    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x20\x00\x00\x08')
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x01\x20\x00\x20\x00\x00\x08')
+
+    # abort
+    adapter.tx_mock.reset_mock()
+
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
+    adapter.receive(0x602, b'\x80\x00\x20\x00\x01\x02\x03\x04')
+    adapter.receive(0x602, b'\x0D\x10' + bytes(6))  # write 16 (ok with minimum of 16)
+
+    adapter.tx_mock.assert_has_calls([call(0x582, build_sdo_packet(3, 0x2000)), call(0x582, b'\x80\x00\x00\x00\x01\x00\x04\x05')])
+
+    # abort another transfer
+    adapter.tx_mock.reset_mock()
+
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
+    adapter.receive(0x602, b'\x80\x00\x20\x01\x01\x02\x03\x04')
+    adapter.receive(0x602, b'\x0D\x10' + bytes(6))  # write 16 (ok with minimum of 16)
+
+    adapter.tx_mock.assert_has_calls([call(0x582, build_sdo_packet(3, 0x2000)), call(0x582, b'\x20' + bytes(7))])
+
+
+@pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32, DT.DOMAIN])
+def test_sdo_upload_expetited(datatype):
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+
+    value = struct_dict[datatype].unpack(b'\x01\x02\x03\x04'[:struct_dict[datatype].size])[0]
+    
+    v = Variable(0x2000, 0, datatype, 'rw', default=value)
+    n.object_dictionary.add_object(v)
+
+    mock_write = Mock()
+    n.object_dictionary.update_callbacks[v].add(mock_write)
+
+    mock_write.assert_not_called()
+    adapter.tx_mock.reset_mock()
+
+    # with specified size
+    size = struct_dict[datatype].size
+    adapter.receive(0x602, b'\x40\x00\x20\x00\x00\x00\x00\x00')
+
+    cmd = 0x43 + ((4 - size) << 2)
+    adapter.tx_mock.assert_called_once_with(0x582, cmd.to_bytes(1, 'little') + b'\x00\x20\x00' + b'\x01\x02\x03\x04'[:size] + bytes(4 - size))
+
+def test_sdo_upload_fails():
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+
+    # read 'wo' variables
+    v = Variable(0x2000, 0, DT.INTEGER8, 'wo', default=0)
+    n.object_dictionary.add_object(v)
+
+    adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2000))  # wo entry
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x01\x00\x01\x06')
+
+    # read not working
+    v = Variable(0x2001, 0, DT.INTEGER8, 'rw', default=0)
+    n.object_dictionary.add_object(v)
+
+    def fail(value):
+        raise ValueError('Validation failed')
+
+    n.object_dictionary.set_read_callback(v, fail)
+    adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2001))
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x01\x20\x00\x00\x00\x06\x06')
