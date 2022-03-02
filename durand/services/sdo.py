@@ -24,7 +24,7 @@ class SDODomainAbort(Exception):
         self.variable = variable
 
 
-TransferDirection = Enum('TransferDirection', 'UPLOAD DOWNLOAD')
+TransferDirection = Enum('TransferDirection', 'UPLOAD DOWNLOAD UPLOAD_BLOCK DOWNLOAD_BLOCK')
 
 
 class TransferState:
@@ -32,6 +32,11 @@ class TransferState:
         self.variable = variable
         self.direction = direction
 
+        # used for block transfer
+        self.sequence_number = None
+        self.use_crc = None
+
+        # used for segmented transfer
         self._toggle_bit = False
 
 
