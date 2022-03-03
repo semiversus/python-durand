@@ -21,7 +21,7 @@ class Node:
         self.tpdo = {i: TPDO(self, i) for i in range(1, 5)}
         self.rpdo = {i: RPDO(self, i) for i in range(1, 5)}
 
-        self.sdo_servers = {}
+        self.sdo_servers: Dict[int: SDOServer] = {}
         self.add_sdo_server(0, 0x600 + self.node_id, 0x580 + self.node_id)
         
         HeartbeatProducer(self)

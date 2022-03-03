@@ -1,4 +1,4 @@
-from unittest.mock import Mock, call
+from unittest.mock import Mock, call, MagicMock
 import struct
 
 import pytest
@@ -6,7 +6,7 @@ import pytest
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
-from durand.services.sdo import SDO_STRUCT
+from durand.services.sdo import SDO_STRUCT, BaseDownloadManager
 
 from .adapter import MockAdapter
 
@@ -213,8 +213,8 @@ def test_sdo_download_segmented_fails():
     adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x12\x01\x02\x00\x01\x06')
 
     # data size not matching
-    var = Variable(0x2000, 0, DT.UNSIGNED8, 'rw', minimum=0x10, maximum=0x20)
-    n.object_dictionary.add_object(var)
+    var1 = Variable(0x2000, 0, DT.UNSIGNED8, 'rw', minimum=0x10, maximum=0x20)
+    n.object_dictionary.add_object(var1)
 
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
     adapter.receive(0x602, b'\x01' + bytes(7))  # write too many bytes to unsigned8
@@ -250,13 +250,13 @@ def test_sdo_download_segmented_fails():
     adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x00\x00\x03\x05')
 
     # write not working
-    var = Variable(0x2001, 0, DT.UNSIGNED8, 'rw')
-    n.object_dictionary.add_object(var)
+    var2 = Variable(0x2001, 0, DT.UNSIGNED8, 'rw')
+    n.object_dictionary.add_object(var2)
 
     def fail(value):
         raise ValueError('Validation failed')
 
-    n.object_dictionary.validate_callbacks[var].add(fail)
+    n.object_dictionary.validate_callbacks[var2].add(fail)
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
     adapter.receive(0x602, b'\x0D\x10' + bytes(6))  # write 16
     adapter.tx_mock.assert_called_with(0x582, b'\x80\x01\x20\x00\x20\x00\x00\x08')
@@ -266,18 +266,58 @@ def test_sdo_download_segmented_fails():
 
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
     adapter.receive(0x602, b'\x80\x00\x20\x00\x01\x02\x03\x04')
-    adapter.receive(0x602, b'\x0D\x10' + bytes(6))  # write 16 (ok with minimum of 16)
+    adapter.receive(0x602, b'\x0D\x12' + bytes(6))  # write 18
 
     adapter.tx_mock.assert_has_calls([call(0x582, build_sdo_packet(3, 0x2000)), call(0x582, b'\x80\x00\x00\x00\x01\x00\x04\x05')])
+    assert n.object_dictionary.read(var1) == 32
+
 
     # abort another transfer
     adapter.tx_mock.reset_mock()
 
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
     adapter.receive(0x602, b'\x80\x00\x20\x01\x01\x02\x03\x04')
-    adapter.receive(0x602, b'\x0D\x10' + bytes(6))  # write 16 (ok with minimum of 16)
+    adapter.receive(0x602, b'\x0D\x11' + bytes(6))  # write 17
 
     adapter.tx_mock.assert_has_calls([call(0x582, build_sdo_packet(3, 0x2000)), call(0x582, b'\x20' + bytes(7))])
+    assert n.object_dictionary.read(var1) == 17
+
+
+def test_sdo_download_manager():
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+    
+    var1 = Variable(0x2000, 0, DT.DOMAIN, 'rw')
+    var2 = Variable(0x2001, 0, DT.DOMAIN, 'rw')
+
+    n.object_dictionary.add_object(var1)
+    n.object_dictionary.add_object(var2)
+
+    manager_mock = Mock()
+
+    def download_callback(node: None, variable: Variable, size: int):
+        if variable.index == 0x2001:
+            return manager_mock
+    
+    n.sdo_servers[0].download_callback = download_callback
+
+    # test without DownloadManager
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
+    adapter.receive(0x602, b'\x0D\x10' + bytes(6))
+
+    assert n.object_dictionary.read(var1) == b'\x10'
+
+    manager_mock.assert_not_called()
+
+    # test wit DownloadManager
+    adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
+    adapter.receive(0x602, b'\x0D\x11' + bytes(6))
+
+    assert n.object_dictionary.read(var2) == 0
+    manager_mock.on_receive.assert_called_once_with(b'\x11')
+    manager_mock.on_finish.assert_called_once_with()
+    manager_mock.on_abort.assert_not_called()
+
 
 
 @pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32, DT.DOMAIN])
