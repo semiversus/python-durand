@@ -1,5 +1,6 @@
-from unittest.mock import Mock, call, MagicMock
+from unittest.mock import Mock, call
 import struct
+from binascii import crc_hqx
 
 import pytest
 
@@ -271,7 +272,6 @@ def test_sdo_download_segmented_fails():
     adapter.tx_mock.assert_has_calls([call(0x582, build_sdo_packet(3, 0x2000)), call(0x582, b'\x80\x00\x00\x00\x01\x00\x04\x05')])
     assert n.object_dictionary.read(var1) == 32
 
-
     # abort another transfer
     adapter.tx_mock.reset_mock()
 
@@ -318,6 +318,58 @@ def test_sdo_download_manager():
     manager_mock.on_finish.assert_called_once_with()
     manager_mock.on_abort.assert_not_called()
 
+
+@pytest.mark.parametrize('size', [1, 7, 8, 889, 890, 889 * 2, 889 * 2 + 1, 4096, 100_000])
+@pytest.mark.parametrize('crc', [True, False])
+def test_sdo_download_block(size, crc):
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+    
+    var = Variable(0x2000, 0, DT.DOMAIN, 'rw')
+    n.object_dictionary.add_object(var)
+
+    adapter.tx_mock.reset_mock()
+
+    cmd = 0xC0 + (crc << 2)
+    adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\x00\x20\x00\x00\x00\x00\x00')
+    adapter.tx_mock.assert_called_once_with(0x582, b'\xA4\x00\x20\x00\x7F\x00\x00\x00')
+
+    for _ in range((size - 1) // 889):
+        adapter.tx_mock.reset_mock()
+
+        for sub_block_index in range(1, 128):
+            adapter.tx_mock.assert_not_called()
+            adapter.receive(0x602, sub_block_index.to_bytes(1, 'little') + b'\xAA' * 7)
+    
+        adapter.tx_mock.assert_called_once_with(0x582, b'\xA2\x7F\x7F\x00\x00\x00\x00\x00')
+    
+    adapter.tx_mock.reset_mock()
+
+    for sub_block_index in range(1, ((size - 1) % 889) // 7 + 1 if size else 0):
+        adapter.tx_mock.assert_not_called()
+        adapter.receive(0x602, sub_block_index.to_bytes(1, 'little') + b'\xAA' * 7)
+    
+    adapter.tx_mock.reset_mock()
+
+    if size != 0:
+        segment_nr = ((size - 1) % 889) // 7 + 1
+        cmd = 0x80 + segment_nr
+        adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\xAA' * ((size - 1) % 7 + 1) + bytes(6 - (size - 1) % 7))
+    
+        adapter.tx_mock.assert_called_once_with(0x582, b'\xA2' + segment_nr.to_bytes(1, 'little') + b'\x7F\x00\x00\x00\x00\x00')
+    
+    cmd = 0xC1 + ((6 - (size - 1) % 7) << 2)
+
+    if crc and size:
+        crc_bytes = struct.pack('<H', crc_hqx(b'\xAA' * size, 0))
+    else:
+        crc_bytes = bytes(2)
+
+    adapter.tx_mock.reset_mock()
+    adapter.receive(0x602, cmd.to_bytes(1, 'little') + crc_bytes + bytes(5))
+    adapter.tx_mock.assert_called_once_with(0x582, b'\xA1' + bytes(7))
+
+    assert n.object_dictionary.read(var) == b'\xAA' * size
 
 
 @pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32, DT.DOMAIN])
