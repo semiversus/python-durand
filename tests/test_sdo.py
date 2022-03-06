@@ -7,7 +7,7 @@ import pytest
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
-from durand.services.sdo import SDO_STRUCT, BaseDownloadManager
+from durand.services.sdo import SDO_STRUCT, BaseDownloadHandler
 
 from .adapter import MockAdapter
 
@@ -283,7 +283,7 @@ def test_sdo_download_segmented_fails():
     assert n.object_dictionary.read(var1) == 17
 
 
-def test_sdo_download_manager():
+def test_sdo_download_handler():
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
     
@@ -293,30 +293,30 @@ def test_sdo_download_manager():
     n.object_dictionary.add_object(var1)
     n.object_dictionary.add_object(var2)
 
-    manager_mock = Mock()
+    handler_mock = Mock()
 
     def download_callback(node: None, variable: Variable, size: int):
         if variable.index == 0x2001:
-            return manager_mock
+            return handler_mock
     
-    n.sdo_servers[0].download_callback = download_callback
+    n.sdo_servers[0].download_manager.set_handler_callback(download_callback)
 
-    # test without DownloadManager
+    # test without Downloadhandler
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
     adapter.receive(0x602, b'\x0D\x10' + bytes(6))
 
     assert n.object_dictionary.read(var1) == b'\x10'
 
-    manager_mock.assert_not_called()
+    handler_mock.assert_not_called()
 
-    # test wit DownloadManager
+    # test wit Downloadhandler
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
     adapter.receive(0x602, b'\x0D\x11' + bytes(6))
 
     assert n.object_dictionary.read(var2) == 0
-    manager_mock.on_receive.assert_called_once_with(b'\x11')
-    manager_mock.on_finish.assert_called_once_with()
-    manager_mock.on_abort.assert_not_called()
+    handler_mock.on_receive.assert_called_once_with(b'\x11')
+    handler_mock.on_finish.assert_called_once_with()
+    handler_mock.on_abort.assert_not_called()
 
 
 @pytest.mark.parametrize('size', [1, 7, 8, 889, 890, 889 * 2, 889 * 2 + 1, 4096, 100_000])
