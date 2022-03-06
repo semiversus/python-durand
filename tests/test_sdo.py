@@ -7,9 +7,11 @@ import pytest
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
-from durand.services.sdo import SDO_STRUCT, BaseDownloadHandler
+from durand.services.sdo.server import SDO_STRUCT
+from durand.services.sdo import BaseDownloadHandler
 
 from .adapter import MockAdapter
+
 
 def build_sdo_packet(cs: int, index: int, subindex: int=0, data: bytes=b'', toggle: bool=False):
     cmd = (cs << 5) + (toggle << 4)
