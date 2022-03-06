@@ -47,15 +47,8 @@ class DownloadManager:
     def block_transfer_active(self):
         return self._state == TransferState.BLOCK
     
-    def _init(self, new_state: TransferState, variable: Variable=None):
-        if new_state != TransferState.NONE and self._state != TransferState.NONE:
-            if self._handler:
-                self._handler.on_abort()
-        
+    def _init(self, new_state: TransferState):
         self._state = new_state
-
-        if variable is not None:
-            self._variable = variable
         
         self._sequence_number = None
         self._toggle_bit = False
@@ -111,7 +104,8 @@ class DownloadManager:
         response = SDO_STRUCT.pack(0x60, index, subindex) + bytes(4)
         
         if not cmd & 0x02:  # segmented transfer (not expitited)
-            self._init(TransferState.SEGMENT, variable)
+            self._init(TransferState.SEGMENT)
+            self._variable = variable
 
             if cmd & 0x01:  # size specified
                 size = int.from_bytes(msg[4:], 'little')
@@ -132,7 +126,8 @@ class DownloadManager:
         if self._handler_callback:
             self._handler = self._handler_callback(self._server.node, variable, size)
         
-        self._init(TransferState.NONE, variable)
+        self._init(TransferState.NONE)
+        self._variable = variable
         self._receive(msg[4:4 + size])
         self._finish()
 
@@ -169,7 +164,8 @@ class DownloadManager:
         if variable.access not in ('rw', 'wo'):
             raise SDODomainAbort(0x06010002)  # write a read-only object
 
-        self._init(TransferState.BLOCK, variable)
+        self._init(TransferState.BLOCK)
+        self._variable = variable
         
         self._crc = 0 if cmd & 0x04 else None
 
