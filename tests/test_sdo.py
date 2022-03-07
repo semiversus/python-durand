@@ -321,10 +321,12 @@ def test_sdo_download_handler():
     handler_mock.on_abort.assert_not_called()
 
     # aborting Downloadhandler
-    handler_mock.assert_not_called()
+    handler_mock.reset_mock()
 
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
+    adapter.receive(0x602, b'\x80\x01\x20\x00\x01\x02\x03\x04')
     adapter.receive(0x602, b'\x1D\x11' + bytes(6))
+    adapter.receive(0x602, b'\x80\x01\x20\x00\x01\x02\x03\x04')
 
     assert n.object_dictionary.read(var2) == 0
     handler_mock.on_receive.assert_not_called()

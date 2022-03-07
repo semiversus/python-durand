@@ -49,7 +49,8 @@ class DownloadManager:
     
     def _init(self, new_state: TransferState):
         self._state = new_state
-        
+
+        self._handler = None
         self._sequence_number = None
         self._toggle_bit = False
         self._buffer.clear()
