@@ -25,12 +25,12 @@ class SDODomainAbort(Exception):
 
 
 TransferState = Enum('TransferState', 'NONE SEGMENT BLOCK BLOCK_END')
-        
+
 
 class SDOServer:
     def __init__(self, node: 'Node', index=0, cob_rx: int=None, cob_tx: int=None):
         self._node = node
-        
+
         from .download import DownloadManager
         self.download_manager = DownloadManager(self)
 
@@ -118,7 +118,7 @@ class SDOServer:
 
     def handle_msg(self, cob_id: int, msg: bytes):
         assert cob_id == self._cob_rx, 'Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})'
-        
+
         try:
             ccs = (msg[0] & 0xE0) >> 5
 
@@ -173,7 +173,7 @@ class SDOServer:
 
         variable = self.lookup(index, subindex)
 
-        if variable.access not in ('ro', 'rw', 'constant'):
+        if variable.access not in ('ro', 'rw', 'const'):
             raise SDODomainAbort(0x06010001)  # read a write-only object
 
         try:
@@ -189,14 +189,14 @@ class SDOServer:
         response += bytes(4 - variable.size)
 
         self._node.adapter.send(self._cob_tx, response)
-    
+
     def abort(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
-        
+
         try:
             variable = self._node.object_dictionary.lookup(index, subindex)
         except KeyError:
             return
 
         self.download_manager.on_abort(variable)
-        
+

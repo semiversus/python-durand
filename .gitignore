@@ -1,2 +1,6 @@
 .venv
 __pycache__
+htmlcov
+build
+dist
+*.egg-info
