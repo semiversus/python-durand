@@ -1,3 +1,5 @@
+from typing import Dict
+
 from .adapters import AdapterABC
 from .object_dictionary import ObjectDictionary
 from .services.sdo import SDOServer
@@ -21,7 +23,7 @@ class Node:
         self.tpdo = {i: TPDO(self, i) for i in range(1, 5)}
         self.rpdo = {i: RPDO(self, i) for i in range(1, 5)}
 
-        self.sdo_servers: Dict[int: SDOServer] = {}
+        self.sdo_servers: Dict[int, SDOServer] = dict()  # type: Dict[int, SDOServer]
         self.add_sdo_server(0, 0x600 + self.node_id, 0x580 + self.node_id)
         
         HeartbeatProducer(self)

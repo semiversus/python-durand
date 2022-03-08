@@ -46,12 +46,24 @@ def test_sdo_additional_servers(node_id, index):
 
 
 @pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32, DT.DOMAIN])
-def test_sdo_download_expetited(datatype):
+@pytest.mark.parametrize('with_handler', [True, False])
+def test_sdo_download_expetited(datatype, with_handler):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
+    handler_mock = Mock()
+    handler_calls = list()
+
     v = Variable(0x2000, 0, datatype, 'rw')
     n.object_dictionary.add_object(v)
+
+    def download_handler(node, variable, size):
+        assert node == n
+        assert variable == v
+        return handler_mock
+
+    if with_handler:
+        n.sdo_servers[0].download_manager.set_handler_callback(download_handler)
 
     mock_write = Mock()
     n.object_dictionary.update_callbacks[v].add(mock_write)
@@ -63,20 +75,39 @@ def test_sdo_download_expetited(datatype):
     size = struct_dict[datatype].size
     cmd = 0x23 + ((4 - size) << 2)
     adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\x00\x20\x00\x01\x02\x03\x04')
+    
+    handler_calls.append(call.on_receive(b'\x01\x02\x03\x04'[:size]))
+    handler_calls.append(call.on_finish())
 
     adapter.tx_mock.assert_called_once_with(0x582, b'\x60\x00\x20\x00\x00\x00\x00\x00')
     value = struct_dict[datatype].unpack(b'\x01\x02\x03\x04'[:size])[0]
-    mock_write.assert_called_once_with(value)
+    
+    if with_handler:
+        mock_write.assert_not_called()
+        assert handler_mock.mock_calls == handler_calls
+    else:
+        mock_write.assert_called_once_with(value)
+        assert not handler_mock.mock_calls
 
     # without specified size
     adapter.tx_mock.reset_mock()
     mock_write.reset_mock()
+    handler_mock.reset_mock()
 
     adapter.receive(0x602, b'\x22\x00\x20\x00\x04\x03\x02\x01')
     adapter.tx_mock.assert_called_once_with(0x582, b'\x60\x00\x20\x00\x00\x00\x00\x00')
 
+    handler_calls = [call.on_receive(b'\x04\x03\x02\x01'[:size]),
+                     call.on_finish()]
+
     value = struct_dict[datatype].unpack(b'\x04\x03\x02\x01'[:size])[0]
-    mock_write.assert_called_once_with(value)
+
+    if with_handler:
+        mock_write.assert_not_called()
+        assert handler_mock.mock_calls == handler_calls
+    else:
+        mock_write.assert_called_once_with(value)
+        assert not handler_mock.mock_calls
 
 
 def test_sdo_download_fails():
@@ -147,7 +178,7 @@ def test_sdo_download_segmented(datatype):
     adapter.receive(0x602, b'\x1AHI')
     adapter.tx_mock.assert_called_with(0x582, b'\x30\x00\x00\x00\x00\x00\x00\x00')
 
-    assert n.object_dictionary.read(var) == 0
+    assert n.object_dictionary.read(var) == b''
 
     adapter.receive(0x602, b'\x07JKLM')
     adapter.tx_mock.assert_called_with(0x582, b'\x20\x00\x00\x00\x00\x00\x00\x00')
@@ -285,7 +316,7 @@ def test_sdo_download_segmented_fails():
     assert n.object_dictionary.read(var1) == 17
 
 
-def test_sdo_download_handler():
+def test_sdo_download_segmented_handler():
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
@@ -315,7 +346,7 @@ def test_sdo_download_handler():
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
     adapter.receive(0x602, b'\x0D\x11' + bytes(6))
 
-    assert n.object_dictionary.read(var2) == 0
+    assert n.object_dictionary.read(var2) == b''
     handler_mock.on_receive.assert_called_once_with(b'\x11')
     handler_mock.on_finish.assert_called_once_with()
     handler_mock.on_abort.assert_not_called()
@@ -328,25 +359,40 @@ def test_sdo_download_handler():
     adapter.receive(0x602, b'\x1D\x11' + bytes(6))
     adapter.receive(0x602, b'\x80\x01\x20\x00\x01\x02\x03\x04')
 
-    assert n.object_dictionary.read(var2) == 0
+    assert n.object_dictionary.read(var2) == b''
     handler_mock.on_receive.assert_not_called()
     handler_mock.on_finish.assert_not_called()
     handler_mock.on_abort.assert_called_once_with()
 
 
-@pytest.mark.parametrize('size', [1, 7, 8, 889, 890, 889 * 2, 889 * 2 + 1, 4096, 100_000])
+@pytest.mark.parametrize('size', [1, 7, 8, 889, 890, 889 * 2, 889 * 2 + 1, 4096, 10_000])
 @pytest.mark.parametrize('crc', [True, False])
-def test_sdo_download_block(size, crc):
+@pytest.mark.parametrize('with_handler', [True, False])
+@pytest.mark.parametrize('with_size', [True, False])
+def test_sdo_download_block(size, crc, with_handler, with_size):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
     var = Variable(0x2000, 0, DT.DOMAIN, 'rw')
     n.object_dictionary.add_object(var)
 
+    handler_mock = Mock()
+    handler_calls = list()
+
+    def download_handler(node, variable, size):
+        assert node == n
+        assert variable == var
+        return handler_mock
+
+    if with_handler:
+        n.sdo_servers[0].download_manager.set_handler_callback(download_handler)
+
     adapter.tx_mock.reset_mock()
 
-    cmd = 0xC0 + (crc << 2)
-    adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\x00\x20\x00\x00\x00\x00\x00')
+    cmd = 0xC0 + (crc << 2) + (with_size << 1)
+    size_bytes = struct.pack('<I', size) if with_size else bytes(4)
+
+    adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\x00\x20\x00' + size_bytes)
     adapter.tx_mock.assert_called_once_with(0x582, b'\xA4\x00\x20\x00\x7F\x00\x00\x00')
 
     for _ in range((size - 1) // 889):
@@ -355,6 +401,7 @@ def test_sdo_download_block(size, crc):
         for sub_block_index in range(1, 128):
             adapter.tx_mock.assert_not_called()
             adapter.receive(0x602, sub_block_index.to_bytes(1, 'little') + b'\xAA' * 7)
+            handler_calls.append(call.on_receive(b'\xaa' * 7))
 
         adapter.tx_mock.assert_called_once_with(0x582, b'\xA2\x7F\x7F\x00\x00\x00\x00\x00')
 
@@ -363,6 +410,7 @@ def test_sdo_download_block(size, crc):
     for sub_block_index in range(1, ((size - 1) % 889) // 7 + 1 if size else 0):
         adapter.tx_mock.assert_not_called()
         adapter.receive(0x602, sub_block_index.to_bytes(1, 'little') + b'\xAA' * 7)
+        handler_calls.append(call.on_receive(b'\xaa' * 7))
 
     adapter.tx_mock.reset_mock()
 
@@ -370,6 +418,7 @@ def test_sdo_download_block(size, crc):
         segment_nr = ((size - 1) % 889) // 7 + 1
         cmd = 0x80 + segment_nr
         adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\xAA' * ((size - 1) % 7 + 1) + bytes(6 - (size - 1) % 7))
+        handler_calls.append(call.on_receive(b'\xaa' * ((size - 1) % 7 + 1)))
 
         adapter.tx_mock.assert_called_once_with(0x582, b'\xA2' + segment_nr.to_bytes(1, 'little') + b'\x7F\x00\x00\x00\x00\x00')
 
@@ -382,10 +431,67 @@ def test_sdo_download_block(size, crc):
 
     adapter.tx_mock.reset_mock()
     adapter.receive(0x602, cmd.to_bytes(1, 'little') + crc_bytes + bytes(5))
+    handler_calls.append(call.on_finish())
+    
     adapter.tx_mock.assert_called_once_with(0x582, b'\xA1' + bytes(7))
 
-    assert n.object_dictionary.read(var) == b'\xAA' * size
+    if with_handler:
+        assert n.object_dictionary.read(var) == b''
+        assert handler_mock.mock_calls == handler_calls
+    else:
+        assert n.object_dictionary.read(var) == b'\xAA' * size
 
+
+def test_sdo_block_failed():
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+
+    # write 'const' and 'ro' variables
+    adapter.receive(0x602, build_sdo_packet(cs=6, index=0x1200))  # const entry
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x12\x00\x02\x00\x01\x06')
+
+    adapter.receive(0x602, build_sdo_packet(cs=6, index=0x1200, subindex=1))  # ro entry
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x12\x01\x02\x00\x01\x06')
+
+    # wrong sequence number
+    var = Variable(0x2000, 0, DT.DOMAIN, 'rw')
+    n.object_dictionary.add_object(var)
+
+    adapter.tx_mock.reset_mock()
+
+    adapter.receive(0x602, b'\xC0\x00\x20\x00' + bytes(4))
+    adapter.tx_mock.assert_called_once_with(0x582, b'\xa4\x00\x20\x00\x7f\x00\x00\x00')
+    adapter.tx_mock.reset_mock()
+    adapter.receive(0x602, b'\x00' + bytes(7))
+    adapter.tx_mock.assert_called_once_with(0x582, b'\x80\x00\x20\x00\x03\x00\x04\x05')
+
+    # block end with init
+    adapter.tx_mock.reset_mock()
+
+    adapter.receive(0x602, b'\xC1' + bytes(7))
+    adapter.tx_mock.assert_called_once_with(0x582, b'\x80\x00\x00\x00\x01\x00\x04\x05')
+
+    # wrong crc
+    adapter.receive(0x602, b'\xC4\x00\x20\x00' + bytes(4))
+    adapter.receive(0x602, b'\x81\xBB' + bytes(6))
+    adapter.tx_mock.reset_mock()
+    adapter.receive(0x602, b'\xD9' + bytes(7))
+    adapter.tx_mock.assert_called_once_with(0x582, b'\x80\x00\x20\x00\x04\x00\x04\x05')
+
+    # failed on_receive (1)
+    adapter.tx_mock.reset_mock()
+
+    handler_mock = Mock()
+    handler_mock.on_receive.side_effect = ValueError()
+
+    def download_handler(node, variable, size):
+        return handler_mock
+
+    n.sdo_servers[0].download_manager.set_handler_callback(download_handler)
+
+    adapter.receive(0x602, b'\xC4\x00\x20\x00' + bytes(4))
+    adapter.receive(0x602, b'\x01\xBB' + bytes(6))
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x20\x00\x00\x08')
 
 @pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32, DT.DOMAIN])
 def test_sdo_upload_expetited(datatype):
@@ -410,6 +516,7 @@ def test_sdo_upload_expetited(datatype):
     cmd = 0x43 + ((4 - size) << 2)
     adapter.tx_mock.assert_called_once_with(0x582, cmd.to_bytes(1, 'little') + b'\x00\x20\x00' + b'\x01\x02\x03\x04'[:size] + bytes(4 - size))
 
+
 def test_sdo_upload_fails():
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
@@ -431,3 +538,4 @@ def test_sdo_upload_fails():
     n.object_dictionary.set_read_callback(v, fail)
     adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2001))
     adapter.tx_mock.assert_called_with(0x582, b'\x80\x01\x20\x00\x00\x00\x06\x06')
+

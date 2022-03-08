@@ -61,7 +61,11 @@ class DownloadManager:
 
     def _receive(self, data: bytes):
         if self._handler:
-            self._handler.on_receive(data)
+            try:
+                self._handler.on_receive(data)
+            except:
+                self._abort()
+                raise SDODomainAbort(0x08000020, self._variable)  # data can't be stored
         else:
             self._buffer.extend(data)
 
@@ -124,10 +128,11 @@ class DownloadManager:
         else:
             size = variable.size
         
+        self._init(TransferState.NONE)
+
         if self._handler_callback:
             self._handler = self._handler_callback(self._server.node, variable, size)
         
-        self._init(TransferState.NONE)
         self._variable = variable
         self._receive(msg[4:4 + size])
         self._finish()
@@ -221,11 +226,7 @@ class DownloadManager:
                 raise SDODomainAbort(0x05040004, self._variable)  # CRC invalid
 
         if self._handler:
-            try:
-                self._handler.on_receive(self._buffer[:size])
-            except:
-                self._abort()
-                raise SDODomainAbort(0x08000020, self._variable)  # data can't be stored
+            self._receive(self._buffer[:size])
         elif size != 7:
             del self._buffer[size % 7 - 7:]
 

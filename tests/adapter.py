@@ -17,11 +17,9 @@ class MockAdapter(AdapterABC):
 
     def receive(self, cob_id: int, msg: bytes):
         """ Used in tests to send a CAN message to the node """
-        print(f'RECV {cob_id:3X}: ' + ' '.join('%02X' % b for b in msg))
         self.subscriptions[cob_id](cob_id, msg)
 
     def send(self, cob_id: int, msg: bytes):
         """ When the node is sending a CAN message, it will be captured in .tx_mock """
-        print(f'SEND {cob_id:3X}: ' + ' '.join('%02X' % b for b in msg))
         self.tx_mock(cob_id, msg)
         

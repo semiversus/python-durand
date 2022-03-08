@@ -16,7 +16,7 @@ class Variable:
     subindex: int
     datatype: DatatypeEnum
     access: str
-    default: Any = 0
+    default: Any = None
     factor: float = 1
     minimum: float = None
     maximum: float = None
@@ -103,7 +103,10 @@ class ObjectDictionary:
 
     def add_object(self, variable: Variable):
         self._variables[variable.multiplexor] = variable
-        self._data[variable] = variable.default
+        if variable.default is not None:
+            self._data[variable] = variable.default
+        else:
+            self._data[variable] = 0 if is_numeric(variable.datatype) else b''
 
         if variable.subindex == 0:
             return
