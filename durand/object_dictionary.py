@@ -68,7 +68,7 @@ class Variable:
 
         value = value / self.factor
         dt_struct = struct_dict[self.datatype]
-        
+
         if not is_float(self.datatype):
             value = int(value)
 
@@ -81,9 +81,6 @@ class Variable:
         dt_struct = struct_dict[self.datatype]
         value = dt_struct.unpack(data)[0]
         value *= self.factor
-
-        if not is_float(self.datatype):
-            value = int(value)
 
         return value
 
