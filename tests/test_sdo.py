@@ -8,7 +8,7 @@ from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
 from durand.services.sdo.server import SDO_STRUCT
-from durand.services.sdo import BaseDownloadHandler
+from durand.services.sdo import BaseDownloadHandler, BaseUploadHandler
 
 from .adapter import MockAdapter
 
@@ -45,7 +45,7 @@ def test_sdo_additional_servers(node_id, index):
     assert n.object_dictionary.lookup(0x1200 + index, 3) == Variable(0x1200 + index, 3, DT.UNSIGNED8, 'rw')
 
 
-@pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32, DT.DOMAIN])
+@pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32])
 @pytest.mark.parametrize('with_handler', [True, False])
 def test_sdo_download_expetited(datatype, with_handler):
     adapter = MockAdapter()
@@ -493,7 +493,8 @@ def test_sdo_block_failed():
     adapter.receive(0x602, b'\x01\xBB' + bytes(6))
     adapter.tx_mock.assert_called_with(0x582, b'\x80\x00\x20\x00\x20\x00\x00\x08')
 
-@pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32, DT.DOMAIN])
+
+@pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32])
 def test_sdo_upload_expetited(datatype):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
@@ -532,10 +533,121 @@ def test_sdo_upload_fails():
     v = Variable(0x2001, 0, DT.INTEGER8, 'rw', default=0)
     n.object_dictionary.add_object(v)
 
-    def fail(value):
+    def fail():
         raise ValueError('Validation failed')
 
     n.object_dictionary.set_read_callback(v, fail)
     adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2001))
-    adapter.tx_mock.assert_called_with(0x582, b'\x80\x01\x20\x00\x00\x00\x06\x06')
+    adapter.tx_mock.assert_called_with(0x582, b'\x80\x01\x20\x00\x20\x00\x00\x08')
+
+
+def test_upload_segmented():
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+
+    v = Variable(0x2000, 0, DT.DOMAIN, 'ro', default=b'ABCDEFGHIJKLMNO')
+    n.object_dictionary.add_object(v)
+
+    adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2000))  # init upload
+    adapter.tx_mock.assert_called_with(0x582, b'\x41\x00\x20\x00\x0f\x00\x00\x00')  # response to init upload
+
+    adapter.receive(0x602, b'\x60\x00\x20\x00\x00\x00\x00\x00')  # first segment
+    adapter.tx_mock.assert_called_with(0x582, b'\x00ABCDEFG')  # response for first segment
+
+    adapter.receive(0x602, b'\x70\x00\x20\x00\x00\x00\x00\x00')  # second segment
+    adapter.tx_mock.assert_called_with(0x582, b'\x10HIJKLMN')  # response for second segment
+
+    adapter.receive(0x602, b'\x60\x00\x20\x00\x00\x00\x00\x00')  # third segment
+    adapter.tx_mock.assert_called_with(0x582, b'\x0DO\x00\x00\x00\x00\x00\x00')  # response for third segment
+
+
+class UploadHandler(BaseUploadHandler):
+    def __init__(self, data):
+        self.data = data
+        self.size =len(data)
+
+    def on_read(self, size: int):
+        response_data, self.data = self.data[:size], self.data[size:]
+        return response_data
+
+
+@pytest.mark.parametrize('with_handler', [True, False])
+@pytest.mark.parametrize('size', [1, 2, 6, 7, 8, 14, 100])
+@pytest.mark.parametrize('with_pst', [True, False])  # protocol switching threshold
+def test_upload_segmented_various_length(with_handler, size, with_pst):
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+
+    v = Variable(0x2000, 0, DT.DOMAIN, 'ro', default=b'')
+    n.object_dictionary.add_object(v)
+    
+    def handler_callback(node: Node, variable: Variable):
+        if variable == v:
+            return UploadHandler(b'\xAA' * size)
+
+    if with_handler:
+        n.sdo_servers[0].upload_manager.set_handler_callback(handler_callback)
+    else:
+        n.object_dictionary.write(v, b'\xAA' * size, False)
+
+    if with_pst:
+        adapter.receive(0x602, struct.pack('<BHBBBH', 0xA0, 0x2000, 0, 127, size, 0))  # init block upload with protocol switching threshold
+    else:
+        adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2000))  # init segmented upload
+
+    if size <= 4:
+        cmd = 0x43 + ((4 - size) << 2)
+        data = b'\xAA' * size + bytes(4- size)
+        adapter.tx_mock.assert_called_with(0x582, cmd.to_bytes(1, 'little') + b'\x00\x20\x00' + data)  # response to init upload (expitited)
+        return
+    
+    adapter.tx_mock.assert_called_with(0x582, b'\x41\x00\x20\x00' + struct.pack('<I', size))  # response to init upload
+
+    toggle = False
+
+    for _ in range((size - 1) // 7):
+        cmd = 0x60 + (toggle << 4)
+
+        adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\x00\x20\x00\x00\x00\x00\x00')  # request a segment
+        adapter.tx_mock.assert_called_with(0x582, (toggle << 4).to_bytes(1, 'little') + b'\xAA' * 7)  # response segment
+        toggle = not toggle
+
+    cmd = 0x60 + (toggle << 4)
+    adapter.receive(0x602, cmd.to_bytes(1, 'little') + b'\x00\x20\x00\x00\x00\x00\x00')  # request last segment
+
+    cmd = 0x01 + ((6 - ((size - 1) % 7)) << 1) + (toggle << 4)
+    adapter.tx_mock.assert_called_with(0x582, cmd.to_bytes(1, 'little') + b'\xAA' * ((size - 1) % 7 + 1) + b'\x00' * (6 - (size - 1) % 7))  # response for last segment
+
+
+@pytest.mark.parametrize('with_handler', [True, False])
+def test_block_upload(with_handler):
+    adapter = MockAdapter()
+    n = Node(adapter, 0x02)
+
+    v = Variable(0x2000, 0, DT.DOMAIN, 'ro', default=b'ABCDEFGHIJKLMNO')
+    n.object_dictionary.add_object(v)
+    
+    def handler_callback(node: Node, variable: Variable):
+        if variable == v:
+            return UploadHandler(b'ABCDEFGHIJKLMNO')
+
+    if with_handler:
+        n.sdo_servers[0].upload_manager.set_handler_callback(handler_callback)
+
+    adapter.receive(0x602, b'\xA4\x00\x20\x00\x02\x0D\x00\x00')  # request block with crc, blocksize=2, pst=14
+    adapter.tx_mock.assert_called_with(0x582, b'\xC6\x00\x20\x00\x0f\x00\x00\x00')  # response to block upload init
+
+    adapter.tx_mock.reset_mock()
+    adapter.receive(0x602, b'\xA3' + bytes(7))  # request first part of block
+    calls = [call(0x582, b'\x01ABCDEFG'), call(0x582, b'\x02HIJKLMN')]
+    assert adapter.tx_mock.mock_calls == calls
+
+    adapter.receive(0x602, b'\xA2\x02\x02' + bytes(5))  # acknowledge fist part of blocks
+    adapter.tx_mock.assert_called_with(0x582, b'\x81O' + bytes(6))  # response for second part of blocks
+
+    adapter.receive(0x602, b'\xA2\x01\x02' + bytes(5))  # acknowledge second part of blocks
+    crc = crc_hqx(b'ABCDEFGHIJKLMNO', 0)
+    adapter.tx_mock.assert_called_with(0x582, b'\xCD' + crc.to_bytes(2, 'little') + b'\x00\x00\x00\x00\x00')  # response for third segment
+
+    adapter.receive(0x602, b'\xA1' + bytes(7))  # acknowled transfer
 

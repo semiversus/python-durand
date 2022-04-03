@@ -48,7 +48,10 @@ class Variable:
 
     @property
     def size(self) -> int:
-        return struct_dict[self.datatype].size
+        if is_numeric(self.datatype):
+            return struct_dict[self.datatype].size
+        
+        return None  # no size available
 
     def on_read(self, od: 'ObjectDictionary'):
         # it's called via @variable.on_read(od) wrapping a function

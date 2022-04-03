@@ -32,7 +32,10 @@ class SDOServer:
         self._node = node
 
         from .download import DownloadManager
+        from .upload import UploadManager
+
         self.download_manager = DownloadManager(self)
+        self.upload_manager = UploadManager(self)
 
         if cob_rx is None:
             self._cob_rx = 0x80000000
@@ -126,12 +129,23 @@ class SDOServer:
                 self.abort(msg)
             elif self.download_manager.block_transfer_active:
                 self.download_manager.download_sub_block(msg)
+            elif self.upload_manager.block_transfer_active:
+                self.upload_manager.upload_sub_block(msg)
             elif ccs == 0:  # download segments
                 self.download_manager.download_segment(msg)
             elif ccs == 1:  # init download
                 self.download_manager.init_download(msg)
             elif ccs == 2:  # init upload
-                self.init_upload(msg)
+                self.upload_manager.init_upload(msg)
+            elif ccs == 3:
+                self.upload_manager.upload_segment(msg)
+            elif ccs == 5:
+                if msg[0] & 0x03 == 0:
+                    self.upload_manager.init_upload(msg)
+                elif msg[0] & 0x03 in (2, 3):
+                    self.upload_manager.upload_sub_block(msg)
+                else:
+                    self.upload_manager.upload_block_end(msg)
             elif ccs == 6:  # init/end download block
                 if msg[0] & 0x01:  # end block transfer
                     self.download_manager.download_block_end(msg)
@@ -168,28 +182,6 @@ class SDOServer:
 
         raise SDODomainAbort(0x06090011)  # subindex does not exist
 
-    def init_upload(self, msg_data: bytes):
-        _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
-
-        variable = self.lookup(index, subindex)
-
-        if variable.access not in ('ro', 'rw', 'const'):
-            raise SDODomainAbort(0x06010001)  # read a write-only object
-
-        try:
-            value = self._node.object_dictionary.read(variable)
-            data = variable.pack(value)
-        except Exception:
-            log.exception(f'Exception while reading {variable}')
-            raise SDODomainAbort(0x06060000)  # access failed
-
-        cmd = 0x43 + ((4 - variable.size) << 2)
-
-        response = SDO_STRUCT.pack(cmd, index, subindex) + data
-        response += bytes(4 - variable.size)
-
-        self._node.adapter.send(self._cob_tx, response)
-
     def abort(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
 
@@ -199,4 +191,5 @@ class SDOServer:
             return
 
         self.download_manager.on_abort(variable)
+        self.upload_manager.on_abort(variable)
 

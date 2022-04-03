@@ -99,6 +99,9 @@ class DownloadManager:
             self._init(TransferState.NONE)
 
     def init_download(self, msg: bytes):
+        if self._state != TransferState.NONE:
+            self._abort()
+
         cmd, index, subindex = SDO_STRUCT.unpack(msg[:4])
 
         variable = self._server.lookup(index, subindex)
@@ -163,6 +166,9 @@ class DownloadManager:
         self._server.node.adapter.send(self._server.cob_tx, cmd.to_bytes(1, 'little') + bytes(7))
 
     def download_block_init(self, msg: bytes):
+        if self._state != TransferState.NONE:
+            self._abort()
+    
         cmd, index, subindex = SDO_STRUCT.unpack(msg[:4])
 
         variable = self._server.lookup(index, subindex)

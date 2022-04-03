@@ -28,7 +28,7 @@ node.object_dictionary.add_object(data_var)
 
 node.object_dictionary.update_callbacks[data_var].add(print)
 
-class MyHandler:
+class MyDownloadHandler:
     def __init__(self):
         self._file = open('update.bin', 'wb')
     
@@ -44,7 +44,7 @@ class MyHandler:
 #define handler
 def download_callback(node, variable, size):
     if variable.index == 0x2001:
-        return MyHandler()
+        return MyDownloadHandler()
     
     return None
 
