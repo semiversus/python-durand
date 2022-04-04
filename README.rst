@@ -1,10 +1,10 @@
 =======================================
-Python Durand - CANOpen Device Library
+Python Durand - CANopen Device Library
 =======================================
 
-CANOpen library to implement (local) nodes.
+CANopen library to implement (local) nodes.
 
-Hmmm..., but wait! There is already a CANOpen library out there: python-canopen_.
+Hmmm..., but wait! There is already a CANopen library out there: python-canopen_.
 Why starting a new library? python-canopen is the library to choose, if you
 want to control remote nodes. It's possible to implement local nodes with
 python-canopen, but (IMHO) it's not the main target. *Durand* has a focus on this
@@ -47,7 +47,7 @@ Credits
 
 This library would not be possible without:
 
-* python-canopen_: CANOpen library (by Christian Sandberg)
+* python-canopen_: CANopen library (by Christian Sandberg)
 * python-can_: CAN interface library (by Brian Thorne)
 
 .. _python-canopen: https://github.com/christiansandberg/canopen
