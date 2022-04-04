@@ -133,20 +133,15 @@ class SDOServer:
                 self.upload_manager.upload_sub_block(msg)
             elif ccs == 0:  # download segments
                 self.download_manager.download_segment(msg)
-            elif ccs == 1:  # init download
+            elif ccs == 1:  # init segmented download
                 self.download_manager.init_download(msg)
-            elif ccs == 2:  # init upload
+            elif ccs == 2:  # init block upload
                 self.upload_manager.init_upload(msg)
-            elif ccs == 3:
+            elif ccs == 3:  # init segmented upload
                 self.upload_manager.upload_segment(msg)
-            elif ccs == 5:
-                if msg[0] & 0x03 == 0:
-                    self.upload_manager.init_upload(msg)
-                elif msg[0] & 0x03 in (2, 3):
-                    self.upload_manager.upload_sub_block(msg)
-                else:
-                    self.upload_manager.upload_block_end(msg)
-            elif ccs == 6:  # init/end download block
+            elif ccs == 5 and msg[0] & 0x03 == 0:
+                self.upload_manager.init_upload(msg)
+            elif ccs == 6:  # init block download
                 if msg[0] & 0x01:  # end block transfer
                     self.download_manager.download_block_end(msg)
                 else:  # init block transfer

@@ -30,20 +30,15 @@ def test_sdo_object_dictionary(node_id):
     assert n.object_dictionary.lookup(0x1200, 1) == Variable(0x1200, 1, DT.UNSIGNED32, 'ro', default=0x600 + node_id)
     assert n.object_dictionary.lookup(0x1200, 2) == Variable(0x1200, 2, DT.UNSIGNED32, 'ro', default=0x580 + node_id)
 
-    with pytest.raises(KeyError):
-        n.object_dictionary.lookup(0x1201)  # other SDO server are not used in this configuration
-
 @pytest.mark.parametrize('node_id', [0x01, 0x7F])
 @pytest.mark.parametrize('index', [1, 2, 127])
 def test_sdo_additional_servers(node_id, index):
     n = Node(MockAdapter(), node_id)
-    n.add_sdo_server(index)
 
     assert n.object_dictionary.lookup(0x1200 + index, 0) == Variable(0x1200 + index, 0, DT.UNSIGNED8, 'const', default=3)
     assert n.object_dictionary.lookup(0x1200 + index, 1) == Variable(0x1200 + index, 1, DT.UNSIGNED32, 'rw', default=0x8000_0000)
     assert n.object_dictionary.lookup(0x1200 + index, 2) == Variable(0x1200 + index, 2, DT.UNSIGNED32, 'rw', default=0x8000_0000)
     assert n.object_dictionary.lookup(0x1200 + index, 3) == Variable(0x1200 + index, 3, DT.UNSIGNED8, 'rw')
-
 
 @pytest.mark.parametrize('datatype', [DT.UNSIGNED8, DT.INTEGER8, DT.UNSIGNED16, DT.INTEGER16, DT.UNSIGNED32, DT.INTEGER32, DT.REAL32])
 @pytest.mark.parametrize('with_handler', [True, False])
