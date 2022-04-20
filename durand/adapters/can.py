@@ -28,8 +28,7 @@ class CANAdapter(AdapterABC):
             self.subscriptions.pop(cob_id)
 
     def send(self, cob_id: int, msg: bytes):
-        msg = can.Message(arbitration_id=cob_id, data=msg,
-                          is_extended_id=False)
+        msg = can.Message(arbitration_id=cob_id, data=msg, is_extended_id=False)
         self._bus.send(msg)
 
 

@@ -12,14 +12,14 @@ log = logging.getLogger(__name__)
 
 
 class StateEnum(IntEnum):
-  INITIALISATION = 0
-  STOPPED = 4
-  OPERATIONAL = 5
-  PRE_OPERATIONAL = 127
+    INITIALISATION = 0
+    STOPPED = 4
+    OPERATIONAL = 5
+    PRE_OPERATIONAL = 127
 
 
 class NMTService:
-    def __init__(self, node: 'Node'):
+    def __init__(self, node: "Node"):
         self._node = node
         self.state_callbacks = CallbackHandler()
 
@@ -45,7 +45,7 @@ class NMTService:
             self.set_state(StateEnum.INITIALISATION)
             self.set_state(StateEnum.PRE_OPERATIONAL)
         else:
-            log.error('Unknown NMT command specifier 0x%02X', cs)
+            log.error("Unknown NMT command specifier 0x%02X", cs)
 
     def set_state(self, state: StateEnum):
         if state == self.state:
@@ -53,7 +53,7 @@ class NMTService:
 
         if state == StateEnum.INITIALISATION:
             # send bootup message
-            self._node.adapter.send(0x700 + self._node.node_id, b'\x00')
+            self._node.adapter.send(0x700 + self._node.node_id, b"\x00")
 
         self.state_callbacks.call(state)
 

@@ -16,10 +16,9 @@ class MockAdapter(AdapterABC):
         self.subscriptions.pop(cob_id)
 
     def receive(self, cob_id: int, msg: bytes):
-        """ Used in tests to send a CAN message to the node """
+        """Used in tests to send a CAN message to the node"""
         self.subscriptions[cob_id](cob_id, msg)
 
     def send(self, cob_id: int, msg: bytes):
-        """ When the node is sending a CAN message, it will be captured in .tx_mock """
+        """When the node is sending a CAN message, it will be captured in .tx_mock"""
         self.tx_mock(cob_id, msg)
-        

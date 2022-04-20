@@ -6,13 +6,13 @@ import functools
 import threading
 
 
-TEntry = TypeVar('TEntry')  # type of scheduler entry
+TEntry = TypeVar("TEntry")  # type of scheduler entry
 
 
 class AbstractScheduler(metaclass=ABCMeta):
     @abstractmethod
     def add(self, delay: float, callback, args=(), kwargs={}) -> TEntry:
-        """ Add a new scheduler entry.
+        """Add a new scheduler entry.
 
         :param delay: time in seconds when the callback should be called
         :param callback: a function object called when time has passed
@@ -23,17 +23,17 @@ class AbstractScheduler(metaclass=ABCMeta):
 
     @abstractmethod
     def cancel(self, entry: TEntry):
-        """ Cancel a scheduled callback
+        """Cancel a scheduled callback
 
         :param entry: the scheduler entry to be canceld
         """
 
     def start(self):
-        """ Start scheduling """
+        """Start scheduling"""
 
     @abstractproperty
     def lock(self):
-        """ A global lock which can be used the assure thread safety """
+        """A global lock which can be used the assure thread safety"""
 
 
 class AsyncScheduler(AbstractScheduler):

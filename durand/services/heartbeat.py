@@ -9,14 +9,16 @@ if TYPE_CHECKING:
 
 
 class HeartbeatProducer:
-    def __init__(self, node: 'Node'):
+    def __init__(self, node: "Node"):
         self._handle = None
         self._node = node
 
-        heartbeat_producer = Variable(0x1017, 0, DT.UNSIGNED16, 'rw')
+        heartbeat_producer = Variable(0x1017, 0, DT.UNSIGNED16, "rw")
 
         node.object_dictionary.add_object(heartbeat_producer)
-        node.object_dictionary.update_callbacks[heartbeat_producer].add(self._update_interval)
+        node.object_dictionary.update_callbacks[heartbeat_producer].add(
+            self._update_interval
+        )
 
     def _update_interval(self, value: int):
         sched = get_scheduler()
@@ -32,4 +34,6 @@ class HeartbeatProducer:
         msg = bytes((self._node.nmt.state,))  # data contains NMT state
         self._node.adapter.send(0x700 + self._node.node_id, msg)
 
-        self._handle = get_scheduler().add(interval, self._process_heartbeat, args=(interval,))
+        self._handle = get_scheduler().add(
+            interval, self._process_heartbeat, args=(interval,)
+        )

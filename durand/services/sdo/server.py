@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-SDO_STRUCT = struct.Struct('<BHB')
+SDO_STRUCT = struct.Struct("<BHB")
 
 
 class SDODomainAbort(Exception):
@@ -24,11 +24,11 @@ class SDODomainAbort(Exception):
         self.variable = variable
 
 
-TransferState = Enum('TransferState', 'NONE SEGMENT BLOCK BLOCK_END')
+TransferState = Enum("TransferState", "NONE SEGMENT BLOCK BLOCK_END")
 
 
 class SDOServer:
-    def __init__(self, node: 'Node', index=0, cob_rx: int=None, cob_tx: int=None):
+    def __init__(self, node: "Node", index=0, cob_rx: int = None, cob_tx: int = None):
         self._node = node
 
         from .download import DownloadManager
@@ -48,22 +48,25 @@ class SDOServer:
             self._cob_tx = cob_tx
 
         od = self._node.object_dictionary
-        od.add_object(Variable(0x1200 + index, 0, DT.UNSIGNED8,
-                      'const', 3 if index else 2))
+        od.add_object(
+            Variable(0x1200 + index, 0, DT.UNSIGNED8, "const", 3 if index else 2)
+        )
 
-        cob_rx_var = Variable(0x1200 + index, 1, DT.UNSIGNED32,
-                             'rw' if index else 'ro', self._cob_rx)
+        cob_rx_var = Variable(
+            0x1200 + index, 1, DT.UNSIGNED32, "rw" if index else "ro", self._cob_rx
+        )
         od.add_object(cob_rx_var)
 
-        cob_tx_var = Variable(0x1200 + index, 2, DT.UNSIGNED32,
-                             'rw' if index else 'ro', self._cob_tx)
+        cob_tx_var = Variable(
+            0x1200 + index, 2, DT.UNSIGNED32, "rw" if index else "ro", self._cob_tx
+        )
         od.add_object(cob_tx_var)
 
         if index:
             od.download_callbacks[cob_rx].add(self._update_cob_rx)
             od.download_callbacks[cob_tx].add(self._update_cob_tx)
 
-            od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, 'rw'))
+            od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, "rw"))
 
         self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
 
@@ -76,7 +79,11 @@ class SDOServer:
         if ((self._cob_rx & self._cob_tx) & (1 << 31)) and not value & (1 << 31):
             self._node.remove_subscription(self._cob_rx & 0x7FF)
 
-        if not self._cob_rx & (1 << 31) and value & (1 << 31) and self._cob_tx & (1 << 31):
+        if (
+            not self._cob_rx & (1 << 31)
+            and value & (1 << 31)
+            and self._cob_tx & (1 << 31)
+        ):
             self._node.adapter.add_subscription(value & 0x7FF)
 
         self._cob_rx = value
@@ -86,7 +93,11 @@ class SDOServer:
         if ((self._cob_rx & self._cob_tx) & (1 << 31)) and not value & (1 << 31):
             self._node.remove_subscription(self._cob_rx & 0x7FF)
 
-        if not self._cob_tx & (1 << 31) and value & (1 << 31) and self._cob_rx & (1 << 31):
+        if (
+            not self._cob_tx & (1 << 31)
+            and value & (1 << 31)
+            and self._cob_rx & (1 << 31)
+        ):
             self._node.adapter.add_subscription(self._cob_rx & 0x7FF)
 
         self._cob_rx = value
@@ -120,7 +131,9 @@ class SDOServer:
             self._update_cob_rx(cob)
 
     def handle_msg(self, cob_id: int, msg: bytes):
-        assert cob_id == self._cob_rx, 'Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})'
+        assert (
+            cob_id == self._cob_rx
+        ), "Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})"
 
         try:
             ccs = (msg[0] & 0xE0) >> 5
@@ -160,10 +173,10 @@ class SDOServer:
                 elif e.variable is False:
                     index, subindex = 0, 0
             else:
-                log.exception('Exception during processing %r', msg)
+                log.exception("Exception during processing %r", msg)
 
             response = SDO_STRUCT.pack(0x80, index, subindex)
-            response += struct.pack('<I', code)
+            response += struct.pack("<I", code)
             self._node.adapter.send(self._cob_tx, response)
 
     def lookup(self, index: int, subindex: int) -> Variable:
@@ -187,4 +200,3 @@ class SDOServer:
 
         self.download_manager.on_abort(variable)
         self.upload_manager.on_abort(variable)
-
