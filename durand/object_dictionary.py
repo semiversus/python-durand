@@ -90,9 +90,6 @@ class Variable:
         value = dt_struct.unpack(data)[0]
         value *= self.factor
 
-        if not is_float(self.datatype):
-            value = int(value)
-
         return value
 
 

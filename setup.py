@@ -13,7 +13,7 @@ with open('README.rst', 'rb') as readme_file:
 setup(
     name='durand',
     use_scm_version={"write_to": "durand/_version.py"},
-    description='CANOpen library providing functionality to implement nodes',
+    description='CANopen library providing functionality to implement nodes',
     long_description=readme,
     long_description_content_type='text/x-rst',
     url='https://github.com/semiversus/python-durand',

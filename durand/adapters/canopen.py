@@ -6,7 +6,7 @@ from canopen import Network
 from .base import AdapterABC
 
 
-class CANOpenAdapter(AdapterABC):
+class CANopenAdapter(AdapterABC):
     def __init__(self, network: Network):
         self._network = network
         self._subscriptions = dict()
