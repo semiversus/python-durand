@@ -10,6 +10,8 @@ from .object_dictionary import Variable
 from .datatypes import DatatypeEnum as DT
 
 
+SDO_SERVERS = 127
+
 class Node:
     def __init__(self, adapter: AdapterABC, node_id: int, od: ObjectDictionary = None):
 
@@ -28,7 +30,9 @@ class Node:
             SDOServer(self, 0, 0x600 + self.node_id, 0x580 + self.node_id)
         )
 
-        for index in range(1, 128):
+        assert 1 <= SDO_SERVERS <= 127, "Number of SDO servers has to be between 1 and 127"
+
+        for index in range(1, SDO_SERVERS + 1):
             self.sdo_servers.append(SDOServer(self, index))
 
         HeartbeatProducer(self)
