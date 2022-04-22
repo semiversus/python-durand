@@ -21,7 +21,7 @@ class StateEnum(IntEnum):
 class NMTService:
     def __init__(self, node: "Node"):
         self._node = node
-        self._pending_node_id = None
+        self.pending_node_id = node.node_id
 
         self.state_callbacks = CallbackHandler()
 
@@ -49,14 +49,16 @@ class NMTService:
         else:
             log.error("Unknown NMT command specifier 0x%02X", cs)
 
+    def reset(self):
+        self.set_state(StateEnum.INITIALISATION)
+        self.set_state(StateEnum.PRE_OPERATIONAL)
+
     def set_state(self, state: StateEnum):
         if state == self.state:
             return
 
         if state == StateEnum.INITIALISATION:
-            if self._pending_node_id is not None:
-                self._node.node_id = self._pending_node_id
-                self._pending_node_id = None
+            self._node.node_id = self.pending_node_id
 
             # send bootup message
             self._node.adapter.send(0x700 + self._node.node_id, b"\x00")
@@ -64,6 +66,3 @@ class NMTService:
         self.state_callbacks.call(state)
 
         self.state = state
-    
-    def set_pending_node_id(self, node_id: int):
-        self._pending_node_id = node_id
