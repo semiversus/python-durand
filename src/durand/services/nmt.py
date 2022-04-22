@@ -21,6 +21,8 @@ class StateEnum(IntEnum):
 class NMTService:
     def __init__(self, node: "Node"):
         self._node = node
+        self._pending_node_id = None
+
         self.state_callbacks = CallbackHandler()
 
         self.state = None
@@ -52,9 +54,16 @@ class NMTService:
             return
 
         if state == StateEnum.INITIALISATION:
+            if self._pending_node_id is not None:
+                self._node.node_id = self._pending_node_id
+                self._pending_node_id = None
+
             # send bootup message
             self._node.adapter.send(0x700 + self._node.node_id, b"\x00")
 
         self.state_callbacks.call(state)
 
         self.state = state
+    
+    def set_pending_node_id(self, node_id: int):
+        self._pending_node_id = node_id
