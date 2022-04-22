@@ -12,7 +12,7 @@ with open('README.rst', 'rb') as readme_file:
 
 setup(
     name='durand',
-    use_scm_version={"write_to": "durand/_version.py"},
+    use_scm_version={"write_to": "src/durand/_version.py"},
     description='CANopen library providing functionality to implement nodes',
     long_description=readme,
     long_description_content_type='text/x-rst',
@@ -33,6 +33,7 @@ setup(
     python_requires='>=3.7',
     license='MIT license',
     keywords='canopen can node ds301',
-    packages=find_packages(include=['durand*']),
+    packages=find_packages('src', include=['durand.*']),
+    package_dir = {'': 'src'},
     zip_safe=False,
 )

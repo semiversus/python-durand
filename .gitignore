@@ -4,3 +4,4 @@ htmlcov
 build
 dist
 *.egg-info
+_version.py
