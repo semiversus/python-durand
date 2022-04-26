@@ -1,7 +1,6 @@
 import struct
 from binascii import crc_hqx
 
-from durand.object_dictionary import Variable
 from .server import SDODomainAbort, SDOServer, TransferState, SDO_STRUCT
 
 

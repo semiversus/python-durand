@@ -8,7 +8,7 @@ from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
 from durand.services.sdo.server import SDO_STRUCT
-from durand.services.sdo import BaseDownloadHandler, BaseUploadHandler
+from durand.services.sdo import BaseUploadHandler
 
 from .adapter import MockAdapter
 
@@ -22,40 +22,6 @@ def build_sdo_packet(
         cmd += ((4 - len(data)) << 2) + 3  # set size and expetited
 
     return SDO_STRUCT.pack(cmd, index, subindex) + data + bytes(4 - len(data))
-
-
-@pytest.mark.parametrize("node_id", [0x01, 0x7F])
-def test_sdo_object_dictionary(node_id):
-    n = Node(MockAdapter(), node_id)
-
-    assert n.object_dictionary.lookup(0x1200, 0) == Variable(
-        0x1200, 0, DT.UNSIGNED8, "const", default=2
-    )
-    assert n.object_dictionary.lookup(0x1200, 1) == Variable(
-        0x1200, 1, DT.UNSIGNED32, "ro", default=0x600 + node_id
-    )
-    assert n.object_dictionary.lookup(0x1200, 2) == Variable(
-        0x1200, 2, DT.UNSIGNED32, "ro", default=0x580 + node_id
-    )
-
-
-@pytest.mark.parametrize("node_id", [0x01, 0x7F])
-@pytest.mark.parametrize("index", [1, 2, 127])
-def test_sdo_additional_servers(node_id, index):
-    n = Node(MockAdapter(), node_id)
-
-    assert n.object_dictionary.lookup(0x1200 + index, 0) == Variable(
-        0x1200 + index, 0, DT.UNSIGNED8, "const", default=3
-    )
-    assert n.object_dictionary.lookup(0x1200 + index, 1) == Variable(
-        0x1200 + index, 1, DT.UNSIGNED32, "rw", default=0x8000_0000
-    )
-    assert n.object_dictionary.lookup(0x1200 + index, 2) == Variable(
-        0x1200 + index, 2, DT.UNSIGNED32, "rw", default=0x8000_0000
-    )
-    assert n.object_dictionary.lookup(0x1200 + index, 3) == Variable(
-        0x1200 + index, 3, DT.UNSIGNED8, "rw"
-    )
 
 
 @pytest.mark.parametrize(

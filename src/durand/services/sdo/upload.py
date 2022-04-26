@@ -1,10 +1,7 @@
-from cgitb import handler
 import struct
 from binascii import crc_hqx
-from typing import Tuple
 
 from durand.datatypes import is_numeric
-from durand.object_dictionary import Variable
 
 from .server import SDODomainAbort, SDOServer, TransferState, SDO_STRUCT
 

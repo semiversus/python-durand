@@ -1,14 +1,8 @@
 =======================================
-Python Durand - CANopen Device Library
+Python Durand - CANopen Slave Device Library
 =======================================
 
-CANopen library to implement (local) nodes.
-
-Hmmm..., but wait! There is already a CANopen library out there: python-canopen_.
-Why starting a new library? python-canopen is the library to choose, if you
-want to control remote nodes. It's possible to implement local nodes with
-python-canopen, but (IMHO) it's not the main target. *Durand* has a focus on this
-part.
+CANopen library to implement slave nodes.
 
 Backends:
 

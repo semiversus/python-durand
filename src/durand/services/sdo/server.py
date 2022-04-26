@@ -63,8 +63,8 @@ class SDOServer:
         od.add_object(cob_tx_var)
 
         if index:
-            od.download_callbacks[cob_rx].add(self._update_cob_rx)
-            od.download_callbacks[cob_tx].add(self._update_cob_tx)
+            od.download_callbacks[cob_rx_var].add(self._update_cob_rx)
+            od.download_callbacks[cob_tx_var].add(self._update_cob_tx)
 
             od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, "rw"))
 
@@ -76,31 +76,28 @@ class SDOServer:
 
     def _update_cob_rx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
-        if ((self._cob_rx & self._cob_tx) & (1 << 31)) and not value & (1 << 31):
-            self._node.remove_subscription(self._cob_rx & 0x7FF)
+        if not ((self._cob_rx | self._cob_tx) & (1 << 31)):
+            self._node.adapter.remove_subscription(self._cob_rx & 0x7FF)
 
-        if (
-            not self._cob_rx & (1 << 31)
-            and value & (1 << 31)
-            and self._cob_tx & (1 << 31)
+        if (not value & (1 << 31)
+            and not self._cob_tx & (1 << 31)
         ):
-            self._node.adapter.add_subscription(value & 0x7FF)
+            self._node.adapter.add_subscription(value & 0x7FF, self.handle_msg)
 
         self._cob_rx = value
 
     def _update_cob_tx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
-        if ((self._cob_rx & self._cob_tx) & (1 << 31)) and not value & (1 << 31):
-            self._node.remove_subscription(self._cob_rx & 0x7FF)
+        if not ((self._cob_rx | self._cob_tx) & (1 << 31)) and value & (1 << 31):
+            self._node.adapter.remove_subscription(self._cob_rx & 0x7FF)
 
         if (
-            not self._cob_tx & (1 << 31)
-            and value & (1 << 31)
-            and self._cob_rx & (1 << 31)
+            not value & (1 << 31)
+            and not self._cob_rx & (1 << 31)
         ):
-            self._node.adapter.add_subscription(self._cob_rx & 0x7FF)
+            self._node.adapter.add_subscription(self._cob_rx & 0x7FF, self.handle_msg)
 
-        self._cob_rx = value
+        self._cob_tx = value
 
     @property
     def cob_tx(self):
