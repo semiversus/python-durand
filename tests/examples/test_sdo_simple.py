@@ -17,14 +17,13 @@ def test_simple_access():
 
     # upload the value 1 via SDO
     adapter.test([
-        RxMsg(0x602, '2b 00 20 00 01 00 00 00'),  # send the request
+        RxMsg(0x602, '2b 00 20 00 01 00 00 00'),  # send the upload request with value 1
         TxMsg(0x582, '60 00 20 00 00 00 00 00'),  # receive the acknowledge
     ])
 
     # download object via SDO
     adapter.test([
-        RxMsg(0x602, '40 00 20 00 00 00 00 00'),
-        TxMsg(0x582, '4b 00 20 00 01 00 00 00'),
+        RxMsg(0x602, '40 00 20 00 00 00 00 00'),  # send the download request
+        TxMsg(0x582, '4b 00 20 00 01 00 00 00'),  # received the value 1
     ])
 
-    
