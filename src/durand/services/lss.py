@@ -54,15 +54,15 @@ class LSS:
         cs = msg[0]
 
         if self._state == LSSState.WAITING:
-            method = _waiting_cs_dict.get(cs, None)
+            method = LSS._waiting_cs_dict.get(cs, None)
         else:
-            method = _configuration_cs_dict.get(cs, None)
+            method = LSS._configuration_cs_dict.get(cs, None)
 
         if method is None:
             return
-        
+
         method(self, msg)
-        
+
     def cmd_switch_mode_global_configuration(self, msg: bytes):
         if msg[1] != 1:  # check if requested mode is CONFIGURATION
             return
@@ -72,7 +72,7 @@ class LSS:
     def cmd_switch_mode_global_waiting(self, msg: bytes):
         if msg[1] != 0:  # check if requested mode is WAITING
             return
-    
+
         if self._node.node_id == 0xFF and self._node.nmt.pending_node_id != 0xFF:
             self._node.nmt.reset()
 
@@ -89,14 +89,14 @@ class LSS:
         if self._received_selective_address == self._get_own_address():
             self._state = LSSState.CONFIGURATION
             self._node.adapter.send(0x7e4, b"\x44" + bytes(7))
-        
+
         self._received_selective_address == [None] * 4
-    
+
     def cmd_inquire_identity(self, msg: bytes):
         index = msg[0] - 0x5a
         value = self._get_own_address()[index]
         self._node.adapter.send(0x7e4, msg[:1] + value.to_bytes(4, 'little') + bytes(3))
-    
+
     def cmd_inquire_node_id(self, msg: bytes):
         self._node.adapter.send(0x7e4, b"\x5e" + self._node.node_id.to_bytes(1, 'little') + bytes(6))
 
@@ -124,15 +124,15 @@ class LSS:
 
     def cmd_activate_bit_timing(self, msg: bytes):
         delay = int.from_bytes(msg[1:3], 'little') / 1000  # [seconds]
-        
+
         if self._pending_baudrate is not None:
             get_scheduler().add(delay, self._change_baudrate, args=(delay,))
-    
+
     def _change_baudrate(self, delay: float):
         self._change_baudrate_cb(self._pending_baudrate)
         self._pending_baudrate = None
         get_scheduler().add(delay, self._node.nmt.reset)
-    
+
     def cmd_store_configuration(self, msg: bytes):
         # store configuration is not supported
         self._node.adapter.send(0x7e4, b"\x17\x01" + bytes(6))
@@ -144,9 +144,9 @@ class LSS:
 
         if None in self._remote_slave_address:
             return
-        
+
         vendor, product, revision, serial = self._get_own_address()
-        
+
         if (vendor == self._remote_slave_address[0] and
                 product == self._remote_slave_address[1] and
                 self._remote_slave_address[2] <= revision <= self._remote_slave_address[3] and
@@ -155,7 +155,7 @@ class LSS:
             self._node.adapter.send(0x7e4, b"\x47" + bytes(7))
 
         self._remote_slave_address = [None] * 6
-    
+
     def cmd_identify_nonconfigured_remote_slaves(self, msg: bytes):
         if self._node.node_id == 0xFF:
             self._node.adapter.send(0x7e4, b"\x50" + bytes(7))
@@ -163,64 +163,64 @@ class LSS:
     def cmd_fastscan(self, msg: bytes):
         if self._node.node_id != 0xFF:
             return
-        
+
         id_number, bit_checked, lss_sub, lss_next = struct.unpack('IBBB', msg[1:])
 
         if bit_checked == 0x80:
             self._fastscan_state = 0
             self._node.adapter.send(0x7e4, b"\x4F" + bytes(7))
             return
-        
+
         if lss_sub != self._fastscan_state:
             return
 
         mask = ~((1 << bit_checked) - 1)
         lss_address = self._get_own_address()
-        
+
         if (lss_address[lss_sub] & mask) != (id_number & mask):
             return
-        
+
         self._fastscan_state = lss_next
 
         if bit_checked == 0 and lss_sub == 3:
             self._state = LSSState.CONFIGURATION
-        
+
         self._node.adapter.send(0x7e4, b"\x4F" + bytes(7))
 
 
-_waiting_cs_dict = {
-    0x04: LSS.cmd_switch_mode_global_configuration,
-    0x40: LSS.cmd_switch_mode_selective,
-    0x41: LSS.cmd_switch_mode_selective,
-    0x42: LSS.cmd_switch_mode_selective,
-    0x43: LSS.cmd_switch_mode_selective,
-    0x46: LSS.cmd_identify_remote_slaves,
-    0x47: LSS.cmd_identify_remote_slaves,
-    0x48: LSS.cmd_identify_remote_slaves,   
-    0x49: LSS.cmd_identify_remote_slaves,
-    0x4a: LSS.cmd_identify_remote_slaves,
-    0x4b: LSS.cmd_identify_remote_slaves,
-    0x4c: LSS.cmd_identify_nonconfigured_remote_slaves,
-    0x51: LSS.cmd_fastscan,
-}
+    _waiting_cs_dict = {
+        0x04: cmd_switch_mode_global_configuration,
+        0x40: cmd_switch_mode_selective,
+        0x41: cmd_switch_mode_selective,
+        0x42: cmd_switch_mode_selective,
+        0x43: cmd_switch_mode_selective,
+        0x46: cmd_identify_remote_slaves,
+        0x47: cmd_identify_remote_slaves,
+        0x48: cmd_identify_remote_slaves,
+        0x49: cmd_identify_remote_slaves,
+        0x4a: cmd_identify_remote_slaves,
+        0x4b: cmd_identify_remote_slaves,
+        0x4c: cmd_identify_nonconfigured_remote_slaves,
+        0x51: cmd_fastscan,
+    }
 
-_configuration_cs_dict = {
-    0x04: LSS.cmd_switch_mode_global_waiting,
-    0x11: LSS.cmd_configure_node_id,
-    0x13: LSS.cmd_configure_bit_timing,
-    0x15: LSS.cmd_activate_bit_timing,
-    0x17: LSS.cmd_store_configuration,
-    0x46: LSS.cmd_identify_remote_slaves,
-    0x47: LSS.cmd_identify_remote_slaves,
-    0x48: LSS.cmd_identify_remote_slaves,
-    0x49: LSS.cmd_identify_remote_slaves,
-    0x4a: LSS.cmd_identify_remote_slaves,
-    0x4b: LSS.cmd_identify_remote_slaves,
-    0x4c: LSS.cmd_identify_nonconfigured_remote_slaves,
-    0x51: LSS.cmd_fastscan,
-    0x5a: LSS.cmd_inquire_identity,
-    0x5b: LSS.cmd_inquire_identity,
-    0x5c: LSS.cmd_inquire_identity,
-    0x5d: LSS.cmd_inquire_identity,
-    0x5e: LSS.cmd_inquire_node_id,
-}
+    _configuration_cs_dict = {
+        0x04: cmd_switch_mode_global_waiting,
+        0x11: cmd_configure_node_id,
+        0x13: cmd_configure_bit_timing,
+        0x15: cmd_activate_bit_timing,
+        0x17: cmd_store_configuration,
+        0x46: cmd_identify_remote_slaves,
+        0x47: cmd_identify_remote_slaves,
+        0x48: cmd_identify_remote_slaves,
+        0x49: cmd_identify_remote_slaves,
+        0x4a: cmd_identify_remote_slaves,
+        0x4b: cmd_identify_remote_slaves,
+        0x4c: cmd_identify_nonconfigured_remote_slaves,
+        0x51: cmd_fastscan,
+        0x5a: cmd_inquire_identity,
+        0x5b: cmd_inquire_identity,
+        0x5c: cmd_inquire_identity,
+        0x5d: cmd_inquire_identity,
+        0x5e: cmd_inquire_node_id,
+    }

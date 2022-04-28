@@ -28,15 +28,11 @@ class Node:
 
         self.sdo_servers: List[SDOServer] = list()
 
-        self.sdo_servers.append(
-            SDOServer(self, 0, 0x600 + self.node_id, 0x580 + self.node_id)
-        )
-
         assert (
             1 <= SDO_SERVERS <= 127
         ), "Number of SDO servers has to be between 1 and 127"
 
-        for index in range(1, SDO_SERVERS + 1):
+        for index in range(SDO_SERVERS + 1):
             self.sdo_servers.append(SDOServer(self, index))
 
         self.heartbeat_producer = HeartbeatProducer(self)

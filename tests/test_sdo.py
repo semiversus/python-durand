@@ -9,6 +9,7 @@ from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
 from durand.services.sdo.server import SDO_STRUCT
 from durand.services.sdo import BaseUploadHandler
+from durand.services.nmt import StateEnum
 
 from .adapter import MockAdapter
 

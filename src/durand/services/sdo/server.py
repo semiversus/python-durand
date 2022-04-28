@@ -5,6 +5,7 @@ import logging
 
 from durand.datatypes import DatatypeEnum as DT
 from durand.object_dictionary import Variable
+from durand.services.nmt import StateEnum
 
 
 if TYPE_CHECKING:
@@ -37,12 +38,16 @@ class SDOServer:
         self.download_manager = DownloadManager(self)
         self.upload_manager = UploadManager(self)
 
-        if cob_rx is None:
+        if index == 0:
+            self._cob_rx = 0x600 + self._node.node_id
+        elif cob_rx is None:
             self._cob_rx = 0x80000000
         else:
             self._cob_rx = cob_rx
 
-        if cob_tx is None:
+        if index == 0:
+            self._cob_tx = 0x580 + self._node.node_id
+        elif cob_tx is None:
             self._cob_tx = 0x80000000
         else:
             self._cob_tx = cob_tx
@@ -68,11 +73,27 @@ class SDOServer:
 
             od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, "rw"))
 
-        self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
+            self._node.nmt.state_callbacks.add(self._update_subscription)
+        else:
+            self._node.nmt.state_callbacks.add(self._update_node)
 
     @property
     def node(self):
         return self._node
+
+    def _update_subscription(self, state: StateEnum):
+        if state == StateEnum.STOPPED:
+            self._node.adapter.remove_subscription(self._cob_rx)
+        elif state == StateEnum.PRE_OPERATIONAL and not (self._cob_rx | self._cob_tx) & (1 << 31):
+            self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
+
+    def _update_node(self, state: StateEnum):
+        if state == StateEnum.STOPPED:
+            self._node.adapter.remove_subscription(self._cob_rx)
+        elif state == StateEnum.PRE_OPERATIONAL:
+            self._cob_rx = 0x600 + self._node.node_id
+            self._cob_tx = 0x580 + self._node.node_id
+            self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
 
     def _update_cob_rx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
