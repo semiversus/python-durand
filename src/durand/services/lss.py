@@ -45,8 +45,7 @@ class LSS:
         lss_address = [None] * 4
 
         for index in range(4):
-            var = self._node.object_dictionary.lookup(0x1018, index + 1)
-            lss_address[index] = self._node.object_dictionary.read(var)
+            lss_address[index] = self._node.object_dictionary.read((0x1018, index + 1))
 
         return lss_address
 

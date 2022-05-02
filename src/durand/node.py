@@ -1,4 +1,5 @@
 from typing import List
+from dataclasses import dataclass
 
 from .adapters import AdapterABC
 from .object_dictionary import ObjectDictionary
@@ -13,9 +14,19 @@ from .datatypes import DatatypeEnum as DT
 
 SDO_SERVERS = 127
 
+@dataclass
+class NodeCapabilities:
+    sdo_servers: int
+    rpdos: int
+    tpdos: int
+
+
+FullNodeCapabilities = NodeCapabilities(sdo_servers=128, rpdos=512, tpdos=512)
+
 
 class Node:
-    def __init__(self, adapter: AdapterABC, node_id: int, od: ObjectDictionary = None):
+    def __init__(self, adapter: AdapterABC, node_id: int, od: ObjectDictionary = None,
+                 capabilities: NodeCapabilities = FullNodeCapabilities):
 
         self.adapter = adapter
         self.node_id = node_id
@@ -23,16 +34,17 @@ class Node:
         self.object_dictionary = od
 
         self.nmt = NMTService(self)
-        self.tpdo = {i: TPDO(self, i) for i in range(1, 5)}
-        self.rpdo = {i: RPDO(self, i) for i in range(1, 5)}
+
+        self.tpdo = [TPDO(self, i) for i in range(capabilities.tpdos)]
+        self.rpdo = [RPDO(self, i) for i in range(capabilities.rpdos)]
 
         self.sdo_servers: List[SDOServer] = list()
 
         assert (
-            1 <= SDO_SERVERS <= 127
-        ), "Number of SDO servers has to be between 1 and 127"
+            1 <= SDO_SERVERS <= 128
+        ), "Number of SDO servers has to be between 1 and 128"
 
-        for index in range(SDO_SERVERS + 1):
+        for index in range(capabilities.sdo_servers):
             self.sdo_servers.append(SDOServer(self, index))
 
         self.heartbeat_producer = HeartbeatProducer(self)
@@ -49,3 +61,10 @@ class Node:
         od.add_object(Variable(0x1018, 4, DT.UNSIGNED32, "ro", 0))  # serial number
 
         self.nmt.set_state(StateEnum.PRE_OPERATIONAL)
+
+
+MinimalNodeCapabilities = NodeCapabilities(sdo_servers=1, rpdos=4, tpdos=4)
+
+class MinimalNode(Node):
+    def __init__(self, adapter: AdapterABC, node_id: int, od: ObjectDictionary = None):
+        Node.__init__(self, adapter, node_id, od, MinimalNodeCapabilities)

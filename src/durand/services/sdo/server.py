@@ -29,8 +29,9 @@ TransferState = Enum("TransferState", "NONE SEGMENT BLOCK BLOCK_END")
 
 
 class SDOServer:
-    def __init__(self, node: "Node", index=0, cob_rx: int = None, cob_tx: int = None):
+    def __init__(self, node: "Node", index=0):
         self._node = node
+        self._index = index
 
         from .download import DownloadManager
         from .upload import UploadManager
@@ -40,22 +41,15 @@ class SDOServer:
 
         if index == 0:
             self._cob_rx = 0x600 + self._node.node_id
-        elif cob_rx is None:
-            self._cob_rx = 0x80000000
         else:
-            self._cob_rx = cob_rx
+            self._cob_rx = 0x80000000
 
         if index == 0:
             self._cob_tx = 0x580 + self._node.node_id
-        elif cob_tx is None:
-            self._cob_tx = 0x80000000
         else:
-            self._cob_tx = cob_tx
+            self._cob_tx = 0x80000000
 
         od = self._node.object_dictionary
-        od.add_object(
-            Variable(0x1200 + index, 0, DT.UNSIGNED8, "const", 3 if index else 2)
-        )
 
         cob_rx_var = Variable(
             0x1200 + index, 1, DT.UNSIGNED32, "rw" if index else "ro", self._cob_rx
@@ -68,8 +62,8 @@ class SDOServer:
         od.add_object(cob_tx_var)
 
         if index:
-            od.download_callbacks[cob_rx_var].add(self._update_cob_rx)
-            od.download_callbacks[cob_tx_var].add(self._update_cob_tx)
+            od.update_callbacks[cob_rx_var].add(self._update_cob_rx)
+            od.update_callbacks[cob_tx_var].add(self._update_cob_tx)
 
             od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, "rw"))
 
@@ -121,20 +115,6 @@ class SDOServer:
         self._cob_tx = value
 
     @property
-    def cob_tx(self):
-        if self._cob_tx & (1 << 31):
-            return None
-
-        return self._cob_tx
-
-    @cob_tx.setter
-    def cob_tx(self, cob: int):
-        if cob is None:
-            self._update_cob_tx(1 << 31)
-        else:
-            self._update_cob_tx(cob)
-
-    @property
     def cob_rx(self):
         if self._cob_rx & (1 << 31):
             return None
@@ -144,9 +124,31 @@ class SDOServer:
     @cob_rx.setter
     def cob_rx(self, cob: int):
         if cob is None:
-            self._update_cob_rx(1 << 31)
-        else:
-            self._update_cob_rx(cob)
+            cob = 1  << 31
+
+        self._node.object_dictionary.write((0x1200 + self._index, 1), cob, downloaded=False)
+
+    @property
+    def cob_tx(self):
+        if self._cob_tx & (1 << 31):
+            return None
+
+        return self._cob_tx
+
+    @cob_tx.setter
+    def cob_tx(self, cob: int):
+        if cob is None:
+            cob = 1  << 31
+
+        self._node.object_dictionary.write((0x1200 + self._index, 2), cob, downloaded=False)
+
+    @property
+    def client_node_id(self):
+        return self._node.object_dictionary.read((0x1200 + self._index, 3))
+
+    @client_node_id.setter
+    def client_node_id(self, value):
+        return self._node.object_dictionary.write((0x1200 + self._index, 3), value, downloaded=False)
 
     def handle_msg(self, cob_id: int, msg: bytes):
         assert (

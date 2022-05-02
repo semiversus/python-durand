@@ -1,4 +1,4 @@
-""" Up- and download of objects via SDO server """
+""" Testing RX and TX PDOs """
 
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
@@ -6,7 +6,7 @@ from durand.datatypes import DatatypeEnum as DT
 from ..adapter import MockAdapter, TxMsg, RxMsg
 
 
-def test_simple_access():
+def test_local_config_tpdo():
     adapter = MockAdapter()
 
     # create the node
@@ -28,13 +28,3 @@ def test_simple_access():
         RxMsg(0x602, '40 00 20 00 00 00 00 00'),  # send the download request
         TxMsg(0x582, '4b 00 20 00 01 00 00 00'),  # received the value 1
     ])
-
-
-def test_nmt_state():
-    """ The SDO server is only active when node is in pre-operational or operational state
-    """
-    adapter = MockAdapter()
-
-    # create the node
-    node = Node(adapter, node_id=2)
-

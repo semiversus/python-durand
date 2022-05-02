@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Callable
+from typing import Any, Dict, List, Tuple, Callable, Union
 import logging
 
 from .datatypes import DatatypeEnum, struct_dict, is_numeric, is_float
@@ -137,7 +137,10 @@ class ObjectDictionary:
     def lookup(self, index: int, subindex: int = 0) -> Variable:
         return self._variables[(index, subindex)]
 
-    def write(self, variable: Variable, value: Any, downloaded: bool = True):
+    def write(self, variable: Union[Tuple[int, int], Variable], value: Any, downloaded: bool = True):
+        if not isinstance(variable, Variable):
+            variable = self.lookup(variable[0], variable[1])
+
         self.validate_callbacks[variable].call(value)  # may raises exception
         self._data[variable] = value
         self.update_callbacks[variable].call(value)
@@ -147,7 +150,10 @@ class ObjectDictionary:
 
         self.download_callbacks[variable].call(value)
 
-    def read(self, variable: Variable):
+    def read(self, variable: Union[Tuple[int, int], Variable]):
+        if not isinstance(variable, Variable):
+            variable = self.lookup(variable[0], variable[1])
+
         if variable in self._read_callbacks:
             return self._read_callbacks[variable]()
 

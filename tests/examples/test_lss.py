@@ -1,3 +1,5 @@
+""" Testing LSS service """
+
 from durand import Node
 
 from ..adapter import MockAdapter, TxMsg, RxMsg
