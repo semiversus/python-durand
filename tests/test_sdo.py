@@ -57,7 +57,7 @@ def test_sdo_download_expetited(datatype, with_handler):
         n.sdo_servers[0].download_manager.set_handler_callback(download_handler)
 
     mock_write = Mock()
-    n.object_dictionary.update_callbacks[v].add(mock_write)
+    n.object_dictionary.update_callbacks[v.multiplexor].add(mock_write)
 
     mock_write.assert_not_called()
     adapter.tx_mock.reset_mock()
@@ -157,7 +157,7 @@ def test_sdo_download_fails():
     def fail(value):
         raise ValueError("Validation failed")
 
-    n.object_dictionary.validate_callbacks[var].add(fail)
+    n.object_dictionary.validate_callbacks[var.multiplexor].add(fail)
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b"\x10"))
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x20\x00\x20\x00\x00\x08")
 
@@ -219,7 +219,7 @@ def test_sdo_download_segmented_numeric(datatype):
     n.object_dictionary.add_object(v)
 
     mock_write = Mock()
-    n.object_dictionary.update_callbacks[v].add(mock_write)
+    n.object_dictionary.update_callbacks[v.multiplexor].add(mock_write)
 
     mock_write.assert_not_called()
     adapter.tx_mock.reset_mock()
@@ -334,7 +334,7 @@ def test_sdo_download_segmented_fails():
     def fail(value):
         raise ValueError("Validation failed")
 
-    n.object_dictionary.validate_callbacks[var2].add(fail)
+    n.object_dictionary.validate_callbacks[var2.multiplexor].add(fail)
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
     adapter.receive(0x602, b"\x0D\x10" + bytes(6))  # write 16
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x01\x20\x00\x20\x00\x00\x08")
@@ -581,7 +581,7 @@ def test_sdo_upload_expetited(datatype):
     n.object_dictionary.add_object(v)
 
     mock_write = Mock()
-    n.object_dictionary.update_callbacks[v].add(mock_write)
+    n.object_dictionary.update_callbacks[v.multiplexor].add(mock_write)
 
     mock_write.assert_not_called()
     adapter.tx_mock.reset_mock()
@@ -618,7 +618,7 @@ def test_sdo_upload_fails():
     def fail():
         raise ValueError("Validation failed")
 
-    n.object_dictionary.set_read_callback(v, fail)
+    n.object_dictionary.set_read_callback(v.multiplexor, fail)
     adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2001))
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x01\x20\x00\x20\x00\x00\x08")
 

@@ -65,6 +65,7 @@ class Node:
 
 MinimalNodeCapabilities = NodeCapabilities(sdo_servers=1, rpdos=4, tpdos=4)
 
+
 class MinimalNode(Node):
     def __init__(self, adapter: AdapterABC, node_id: int, od: ObjectDictionary = None):
         Node.__init__(self, adapter, node_id, od, MinimalNodeCapabilities)

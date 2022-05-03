@@ -62,8 +62,8 @@ class SDOServer:
         od.add_object(cob_tx_var)
 
         if index:
-            od.update_callbacks[cob_rx_var].add(self._update_cob_rx)
-            od.update_callbacks[cob_tx_var].add(self._update_cob_tx)
+            od.update_callbacks[cob_rx_var.multiplexor].add(self._update_cob_rx)
+            od.update_callbacks[cob_tx_var.multiplexor].add(self._update_cob_tx)
 
             od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, "rw"))
 

@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Callable, Union
+from typing import Any, Dict, Tuple, Callable, Union
 import logging
 
 from .datatypes import DatatypeEnum, struct_dict, is_numeric, is_float
@@ -10,22 +10,19 @@ from .callback_handler import CallbackHandler, FailMode
 log = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+TMultiplexor = Union[int, Tuple[int, int]]
+
+
+@dataclass
 class Variable:
-    index: int
-    subindex: int
     datatype: DatatypeEnum
     access: str
-    default: Any = None
+    value: Any = None
     factor: float = 1
     minimum: float = None
     maximum: float = None
 
     def __post_init__(self):
-        if not 0 <= self.index <= 0xFFFF:
-            raise ValueError("Index has to UINT16")
-        if not 0 <= self.subindex <= 255:
-            raise ValueError("Subindex has to be UINT8")
         if self.datatype not in DatatypeEnum:
             raise ValueError("Unsupported datatype")
         if self.access not in ("rw", "ro", "wo", "const"):
@@ -36,10 +33,6 @@ class Variable:
             raise ValueError(
                 "Minimum and Maximum not available with datatype %rs" % self.datatype
             )
-
-    @property
-    def multiplexor(self) -> Tuple[int, int]:
-        return (self.index, self.subindex)
 
     @property
     def writable(self):
@@ -55,20 +48,6 @@ class Variable:
             return struct_dict[self.datatype].size
 
         return None  # no size available
-
-    def on_read(self, od: "ObjectDictionary"):
-        # it's called via @variable.on_read(od) wrapping a function
-        def wrap(func):
-            od.set_read_callback(self, func)
-
-        return wrap
-
-    def on_update(self, od: "ObjectDictionary"):
-        # it's called via @variable.on_update(od) wrapping a function
-        def wrap(func):
-            od.update_callbacks[self].add(func)
-
-        return wrap
 
     def pack(self, value) -> bytes:
         if not is_numeric(self.datatype):
@@ -93,74 +72,103 @@ class Variable:
         return value
 
 
+@dataclass
+class Record:
+    variables: Dict[int, Variable] = field(default_factory=dict)
+
+    def __getitem__(self, subindex: int):
+        return self.variables[subindex]
+
+    def __setitem__(self, subindex: int, variable: Variable):
+        self.variables[subindex] = variable
+
+
+@dataclass
+class Array:
+    variables: Dict[int, Variable] = field(default_factory=dict)
+
+    def __getitem__(self, subindex: int):
+        return self.variables[subindex]
+
+    def __setitem__(self, subindex: int, variable: Variable):
+        self.od.add_variable()
+        self.variables[subindex] = variable
+
+
+TObject = Union[Variable, Record, Array]
+
+
 class ObjectDictionary:
     def __init__(self):
-        self._variables: Dict[Tuple[int, int], Variable] = dict()
-        self._data: Dict[Variable, Any] = dict()
+        self._variables: Dict[TMultiplexor, Variable] = dict()
+        self._objects: Dict[int, TObject] = dict()
+        self._data: Dict[TMultiplexor, Any] = dict()
 
-        self.validate_callbacks: Dict[Variable, CallbackHandler] = defaultdict(
+        self.validate_callbacks: Dict[TMultiplexor, CallbackHandler] = defaultdict(
             lambda: CallbackHandler(fail_mode=FailMode.FIRST_FAIL)
         )
-        self.update_callbacks: Dict[Variable, CallbackHandler] = defaultdict(
+        self.update_callbacks: Dict[TMultiplexor, CallbackHandler] = defaultdict(
             CallbackHandler
         )
-        self.download_callbacks: Dict[Variable, CallbackHandler] = defaultdict(
+        self.download_callbacks: Dict[TMultiplexor, CallbackHandler] = defaultdict(
             CallbackHandler
         )
-        self._read_callbacks: Dict[Variable, Callable] = dict()
+        self._read_callbacks: Dict[TMultiplexor, Callable] = dict()
 
-    def add_object(self, variable: Variable):
-        self._variables[variable.multiplexor] = variable
-        if variable.default is not None:
-            self._data[variable] = variable.default
+    def __getitem__(self, index: int):
+        try:
+            return self._variables[index]
+        except IndexError:
+            return self._objects[index]
+
+    def __setitem__(self, index: int, object: TObject):
+        if isinstance(object, Variable):
+            self._variables[index] = object
         else:
-            self._data[variable] = 0 if is_numeric(variable.datatype) else b""
+            self._objects[index] = object
 
-        if variable.subindex == 0:
-            return
+    def add_variable(self, index: int, subindex: int, variable: Variable):
+        self._variables[(index, 0)] = variable
 
-        if (variable.index, 0) in self._variables:
-            largest_subindex = self._variables[(variable.index, 0)]
+        if variable.value is not None:
+            self._data[(index, 0)] = variable.value
         else:
-            largest_subindex = Variable(
-                index=variable.index,
-                subindex=0,
-                datatype=DatatypeEnum.UNSIGNED8,
-                access="const",
-            )
-
-            self._variables[(variable.index, 0)] = largest_subindex
-
-        value = max(self._data.get(largest_subindex, 0), variable.subindex)
-        self._data[largest_subindex] = value
+            self._data[(index, 0)] = 0 if is_numeric(variable.datatype) else b""
 
     def lookup(self, index: int, subindex: int = 0) -> Variable:
-        return self._variables[(index, subindex)]
+        try:
+            return self._variables[index]
+        except IndexError:
+            return self._objects[index][subindex]
 
-    def write(self, variable: Union[Tuple[int, int], Variable], value: Any, downloaded: bool = True):
-        if not isinstance(variable, Variable):
-            variable = self.lookup(variable[0], variable[1])
+    def write(self, index: int, subindex: int, value: Any, downloaded: bool = True):
+        if index in self._variables:
+            multiplexor = (index, 0)
+        else:
+            multiplexor = (index, subindex)
 
-        self.validate_callbacks[variable].call(value)  # may raises exception
-        self._data[variable] = value
-        self.update_callbacks[variable].call(value)
+        self.validate_callbacks[multiplexor].call(value)  # may raises exception
+        self._data[multiplexor] = value
+        self.update_callbacks[multiplexor].call(value)
 
         if not downloaded:
             return
 
-        self.download_callbacks[variable].call(value)
+        self.download_callbacks[multiplexor].call(value)
 
-    def read(self, variable: Union[Tuple[int, int], Variable]):
-        if not isinstance(variable, Variable):
-            variable = self.lookup(variable[0], variable[1])
+    def read(self, index: int, subindex: int):
+        if index in self._variables:
+            multiplexor = (index, 0)
+        else:
+            multiplexor = (index, subindex)
 
-        if variable in self._read_callbacks:
-            return self._read_callbacks[variable]()
+        if multiplexor in self._read_callbacks:
+            return self._read_callbacks[multiplexor]()
 
-        return self._data[variable]
+        return self._data[multiplexor]
 
-    def set_read_callback(self, variable: Variable, callback) -> None:
-        self._read_callbacks[variable] = callback
+    def set_read_callback(self, index: int, subindex: int, callback) -> None:
+        self._read_callbacks[(index, subindex)] = callback
 
     @property
     def variables(self) -> Tuple[Variable]:
