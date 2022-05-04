@@ -12,10 +12,8 @@ def test_local_config_tpdo():
     # create the node
     node = Node(adapter, node_id=2)
 
-    # add a variable with index 0x2000:0 to the object dictionary of the node
-    node.object_dictionary.add_object(
-        Variable(0x2000, 0, DT.INTEGER16, 'rw', default=5)
-    )
+    # add a variable with index 0x2000 to the object dictionary of the node
+    node.object_dictionary[0x2000] = Variable(DT.INTEGER16, 'rw', value=5)
 
     # upload the value 1 via SDO
     adapter.test([

@@ -82,6 +82,9 @@ class Record:
     def __setitem__(self, subindex: int, variable: Variable):
         self.variables[subindex] = variable
 
+    def add_largest_subindex(self, access='const'):
+        largest_subindex = max(self.variables)
+        self[0] = Variable(DatatypeEnum.UNSIGNED8, access, value=largest_subindex)
 
 @dataclass
 class Array:
@@ -91,7 +94,6 @@ class Array:
         return self.variables[subindex]
 
     def __setitem__(self, subindex: int, variable: Variable):
-        self.od.add_variable()
         self.variables[subindex] = variable
 
 
@@ -127,18 +129,13 @@ class ObjectDictionary:
         else:
             self._objects[index] = object
 
-    def add_variable(self, index: int, subindex: int, variable: Variable):
-        self._variables[(index, 0)] = variable
-
-        if variable.value is not None:
-            self._data[(index, 0)] = variable.value
-        else:
-            self._data[(index, 0)] = 0 if is_numeric(variable.datatype) else b""
-
-    def lookup(self, index: int, subindex: int = 0) -> Variable:
+    def lookup(self, index: int, subindex: int = None) -> Variable:
         try:
             return self._variables[index]
-        except IndexError:
+        except KeyError:
+            if subindex is None:
+                return self._objects[index]
+
             return self._objects[index][subindex]
 
     def write(self, index: int, subindex: int, value: Any, downloaded: bool = True):
@@ -147,14 +144,19 @@ class ObjectDictionary:
         else:
             multiplexor = (index, subindex)
 
-        self.validate_callbacks[multiplexor].call(value)  # may raises exception
+        if multiplexor in self.validate_callbacks:
+            self.validate_callbacks[multiplexor].call(value)  # may raises exception
+
         self._data[multiplexor] = value
-        self.update_callbacks[multiplexor].call(value)
+
+        if multiplexor in self.update_callbacks:
+            self.update_callbacks[multiplexor].call(value)
 
         if not downloaded:
             return
 
-        self.download_callbacks[multiplexor].call(value)
+        if multiplexor in self.download_callbacks:
+            self.download_callbacks[multiplexor].call(value)
 
     def read(self, index: int, subindex: int):
         if index in self._variables:
@@ -165,11 +167,16 @@ class ObjectDictionary:
         if multiplexor in self._read_callbacks:
             return self._read_callbacks[multiplexor]()
 
-        return self._data[multiplexor]
+        try:
+            return self._data[multiplexor]
+        except KeyError:
+            variable = self.lookup(index, subindex)
+            value = variable.value
+
+            if value is None:
+                value = 0 if is_numeric(variable.datatype) else b""
+
+            return value
 
     def set_read_callback(self, index: int, subindex: int, callback) -> None:
         self._read_callbacks[(index, subindex)] = callback
-
-    @property
-    def variables(self) -> Tuple[Variable]:
-        return tuple(self._variables.keys())

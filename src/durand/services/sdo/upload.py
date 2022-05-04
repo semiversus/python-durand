@@ -1,4 +1,5 @@
 import struct
+from typing import Tuple
 from binascii import crc_hqx
 
 from durand.datatypes import is_numeric
@@ -76,7 +77,7 @@ class UploadManager:
 
         self._handler_callback = None
 
-        self._variable = None
+        self._multiplexor: Tuple[int, int] = None
         self._state = TransferState.NONE
 
         # used for block transfer
@@ -93,8 +94,8 @@ class UploadManager:
     def block_transfer_active(self):
         return self._state in (TransferState.BLOCK, TransferState.BLOCK_END)
 
-    def on_abort(self, variable):
-        if self._state != TransferState.NONE and self._variable == variable:
+    def on_abort(self, multiplexor):
+        if self._state != TransferState.NONE and self._multiplexor == multiplexor:
             self._abort()
 
     def _abort(self):
@@ -108,19 +109,19 @@ class UploadManager:
         if variable.access == "wo":
             raise SDODomainAbort(0x06010001)  # read a write-only object
 
-        self._variable = variable
+        self._multiplexor = (index, subindex)
 
         if self._handler_callback:
-            handler = self._handler_callback(self._server.node, variable)
+            handler = self._handler_callback(self._server.node, index, subindex)
 
             if handler:
                 self._stream = HandlerStream(handler)
                 return
 
         try:
-            value = self._server.node.object_dictionary.read(variable)
+            value = self._server.node.object_dictionary.read(index, subindex)
         except:
-            raise SDODomainAbort(0x08000020, variable)  # data can't be transferred
+            raise SDODomainAbort(0x08000020, self._multiplexor)  # data can't be transferred
 
         if is_numeric(variable.datatype):
             value = variable.pack(value)
@@ -186,7 +187,7 @@ class UploadManager:
 
         if toggle_bit != self._toggle_bit:
             self._abort()
-            raise SDODomainAbort(0x05030000, self._variable)  # toggle bit not altered
+            raise SDODomainAbort(0x05030000, self._multiplexor)  # toggle bit not altered
 
         self._toggle_bit = not self._toggle_bit
 

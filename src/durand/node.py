@@ -8,7 +8,7 @@ from .services.pdo import TPDO, RPDO
 from .services.nmt import NMTService, StateEnum
 from .services.lss import LSS
 from .services.heartbeat import HeartbeatProducer
-from .object_dictionary import Variable
+from .object_dictionary import Variable, Record
 from .datatypes import DatatypeEnum as DT
 
 
@@ -51,15 +51,18 @@ class Node:
 
         self.lss = LSS(self)
 
-        od.add_object(Variable(0x1000, 0, DT.UNSIGNED32, "ro", 0))  # device type
-        od.add_object(Variable(0x1001, 0, DT.UNSIGNED8, "ro", 0))  # error register
+        od[0x1000] = Variable(DT.UNSIGNED32, "ro", 0)  # device type
+        od[0x1001] = Variable(DT.UNSIGNED8, "ro", 0)  # error register
 
         # Identity object
-        od.add_object(Variable(0x1018, 1, DT.UNSIGNED32, "ro", 0))  # vendor id
-        od.add_object(Variable(0x1018, 2, DT.UNSIGNED32, "ro", 0))  # product code
-        od.add_object(Variable(0x1018, 3, DT.UNSIGNED32, "ro", 0))  # revision number
-        od.add_object(Variable(0x1018, 4, DT.UNSIGNED32, "ro", 0))  # serial number
+        identity_record = Record()
+        identity_record[1] = Variable(DT.UNSIGNED32, "ro", 0)  # vendor id
+        identity_record[2] = Variable(DT.UNSIGNED32, "ro", 0)  # product code
+        identity_record[3] = Variable(DT.UNSIGNED32, "ro", 0)  # revision number
+        identity_record[4] = Variable(DT.UNSIGNED32, "ro", 0)  # serial number
+        identity_record.add_largest_subindex()
 
+        od[0x1018] = identity_record
         self.nmt.set_state(StateEnum.PRE_OPERATIONAL)
 
 

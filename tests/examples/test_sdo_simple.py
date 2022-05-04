@@ -13,9 +13,7 @@ def test_simple_access():
     node = Node(adapter, node_id=2)
 
     # add a variable with index 0x2000:0 to the object dictionary of the node
-    node.object_dictionary.add_object(
-        Variable(0x2000, 0, DT.INTEGER16, 'rw', default=5)
-    )
+    node.object_dictionary[0x2000] = Variable(DT.INTEGER16, 'rw', value=5)
 
     # upload the value 1 via SDO
     adapter.test([
@@ -38,3 +36,4 @@ def test_nmt_state():
     # create the node
     node = Node(adapter, node_id=2)
 
+    # TODO

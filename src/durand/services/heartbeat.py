@@ -13,12 +13,8 @@ class HeartbeatProducer:
         self._handle = None
         self._node = node
 
-        heartbeat_producer = Variable(0x1017, 0, DT.UNSIGNED16, "rw")
-
-        node.object_dictionary.add_object(heartbeat_producer)
-        node.object_dictionary.update_callbacks[heartbeat_producer.multiplexor].add(
-            self._update_interval
-        )
+        node.object_dictionary[0x1017] = Variable(DT.UNSIGNED16, "rw")
+        node.object_dictionary.update_callbacks[(0x1017, 0)].add(self._update_interval)
 
     def _update_interval(self, value: int):
         sched = get_scheduler()

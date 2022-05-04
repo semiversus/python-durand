@@ -1,10 +1,10 @@
 import struct
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 import logging
 
 from durand.datatypes import DatatypeEnum as DT
-from durand.object_dictionary import Variable
+from durand.object_dictionary import Variable, Record
 from durand.services.nmt import StateEnum
 
 
@@ -19,10 +19,10 @@ SDO_STRUCT = struct.Struct("<BHB")
 
 
 class SDODomainAbort(Exception):
-    def __init__(self, code: int, variable: Variable = None):
+    def __init__(self, code: int, multiplexor: Tuple[int, int] = None):
         Exception.__init__(self)
         self.code = code
-        self.variable = variable
+        self.multiplexor = multiplexor
 
 
 TransferState = Enum("TransferState", "NONE SEGMENT BLOCK BLOCK_END")
@@ -51,25 +51,21 @@ class SDOServer:
 
         od = self._node.object_dictionary
 
-        cob_rx_var = Variable(
-            0x1200 + index, 1, DT.UNSIGNED32, "rw" if index else "ro", self._cob_rx
-        )
-        od.add_object(cob_rx_var)
-
-        cob_tx_var = Variable(
-            0x1200 + index, 2, DT.UNSIGNED32, "rw" if index else "ro", self._cob_tx
-        )
-        od.add_object(cob_tx_var)
+        server_record = Record()
+        server_record[1] = Variable(DT.UNSIGNED32, "rw" if index else "ro", self._cob_rx)
+        server_record[2] = Variable(DT.UNSIGNED32, "rw" if index else "ro", self._cob_tx)
 
         if index:
-            od.update_callbacks[cob_rx_var.multiplexor].add(self._update_cob_rx)
-            od.update_callbacks[cob_tx_var.multiplexor].add(self._update_cob_tx)
-
-            od.add_object(Variable(0x1200 + index, 3, DT.UNSIGNED8, "rw"))
+            od.update_callbacks[(0x1200 + index, 1)].add(self._update_cob_rx)
+            od.update_callbacks[(0x1200 + index, 2)].add(self._update_cob_tx)
+            server_record[3] = Variable(DT.UNSIGNED8, "rw")
 
             self._node.nmt.state_callbacks.add(self._update_subscription)
         else:
             self._node.nmt.state_callbacks.add(self._update_node)
+
+        server_record.add_largest_subindex()
+        od[0x1200 + index] = server_record
 
     @property
     def node(self):
@@ -126,7 +122,7 @@ class SDOServer:
         if cob is None:
             cob = 1  << 31
 
-        self._node.object_dictionary.write((0x1200 + self._index, 1), cob, downloaded=False)
+        self._node.object_dictionary.write(0x1200 + self._index, 1, cob, downloaded=False)
 
     @property
     def cob_tx(self):
@@ -140,15 +136,15 @@ class SDOServer:
         if cob is None:
             cob = 1  << 31
 
-        self._node.object_dictionary.write((0x1200 + self._index, 2), cob, downloaded=False)
+        self._node.object_dictionary.write(0x1200 + self._index, 2, cob, downloaded=False)
 
     @property
     def client_node_id(self):
-        return self._node.object_dictionary.read((0x1200 + self._index, 3))
+        return self._node.object_dictionary.read(0x1200 + self._index, 3)
 
     @client_node_id.setter
     def client_node_id(self, value):
-        return self._node.object_dictionary.write((0x1200 + self._index, 3), value, downloaded=False)
+        return self._node.object_dictionary.write(0x1200 + self._index, 3, value, downloaded=False)
 
     def handle_msg(self, cob_id: int, msg: bytes):
         assert (
@@ -188,9 +184,9 @@ class SDOServer:
 
             if isinstance(e, SDODomainAbort):
                 code = e.code
-                if e.variable:
-                    index, subindex = e.variable.multiplexor
-                elif e.variable is False:
+                if e.multiplexor:
+                    index, subindex = e.multiplexor
+                elif e.multiplexor is False:
                     index, subindex = 0, 0
             else:
                 log.exception("Exception during processing %r", msg)
@@ -204,7 +200,7 @@ class SDOServer:
             return self._node.object_dictionary.lookup(index, subindex)
         except KeyError:
             try:
-                self._node.object_dictionary.lookup(index, 0)
+                self._node.object_dictionary.lookup(index, subindex=None)
             except KeyError:
                 raise SDODomainAbort(0x06020000)  # object does not exist
 
@@ -218,5 +214,5 @@ class SDOServer:
         except KeyError:
             return
 
-        self.download_manager.on_abort(variable)
-        self.upload_manager.on_abort(variable)
+        self.download_manager.on_abort((index, subindex))
+        self.upload_manager.on_abort((index, subindex))

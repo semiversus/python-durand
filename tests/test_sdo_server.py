@@ -13,13 +13,13 @@ def test_sdo_object_dictionary(node_id):
     n = Node(MockAdapter(), node_id)
 
     assert n.object_dictionary.lookup(0x1200, 0) == Variable(
-        0x1200, 0, DT.UNSIGNED8, "const", default=2
+        DT.UNSIGNED8, "const", value=2
     )
     assert n.object_dictionary.lookup(0x1200, 1) == Variable(
-        0x1200, 1, DT.UNSIGNED32, "ro", default=0x600 + node_id
+        DT.UNSIGNED32, "ro", value=0x600 + node_id
     )
     assert n.object_dictionary.lookup(0x1200, 2) == Variable(
-        0x1200, 2, DT.UNSIGNED32, "ro", default=0x580 + node_id
+        DT.UNSIGNED32, "ro", value=0x580 + node_id
     )
 
 
@@ -29,16 +29,16 @@ def test_sdo_additional_servers(node_id, index):
     n = Node(MockAdapter(), node_id)
 
     assert n.object_dictionary.lookup(0x1200 + index, 0) == Variable(
-        0x1200 + index, 0, DT.UNSIGNED8, "const", default=3
+        DT.UNSIGNED8, "const", value=3
     )
     assert n.object_dictionary.lookup(0x1200 + index, 1) == Variable(
-        0x1200 + index, 1, DT.UNSIGNED32, "rw", default=0x8000_0000
+        DT.UNSIGNED32, "rw", value=0x8000_0000
     )
     assert n.object_dictionary.lookup(0x1200 + index, 2) == Variable(
-        0x1200 + index, 2, DT.UNSIGNED32, "rw", default=0x8000_0000
+        DT.UNSIGNED32, "rw", value=0x8000_0000
     )
     assert n.object_dictionary.lookup(0x1200 + index, 3) == Variable(
-        0x1200 + index, 3, DT.UNSIGNED8, "rw"
+        DT.UNSIGNED8, "rw"
     )
 
 @pytest.mark.parametrize("sdo_server", [1, 127])

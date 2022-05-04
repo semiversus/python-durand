@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 import struct
 import logging
 
-from durand.object_dictionary import Variable
+from durand.object_dictionary import Variable, Record
 from durand.datatypes import DatatypeEnum as DT
 
 if TYPE_CHECKING:
@@ -24,26 +24,18 @@ class TPDO:
         self._transmission_type = 254
         self._objects = ()
 
+
         od = self._node.object_dictionary
-        od.add_object(
-            Variable(0x1800 + index, 1, DT.UNSIGNED32, "rw", self._cob_id)  # cob id used by tpdo
-        )
 
-        od.add_object(
-            Variable(0x1800 + index, 2, DT.UNSIGNED8, "rw", self._transmission_type)
-        )
+        tpdo_record = Record()
+        tpdo_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id)  # cob id used by tpdo
+        tpdo_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type)
+        tpdo_record[3] = Variable(DT.UNSIGNED16, "rw", 0)  # inhibit time [µs]
+        tpdo_record[4] = Variable(DT.UNSIGNED16, "rw", 0)  # event timer [ms]
+        tpdo_record[5] = Variable(DT.UNSIGNED16, "rw", 0)  # sync start value
+        tpdo_record.add_largest_subindex()
 
-        od.add_object(
-            Variable(0x1800 + index, 3, DT.UNSIGNED16, "rw", 0)  # inhibit time [µs]
-        )
-
-        od.add_object(
-            Variable(0x1800 + index, 4, DT.UNSIGNED16, "rw", 0)  # event timer [ms]
-        )
-
-        od.add_object(
-            Variable(0x1800 + index, 5, DT.UNSIGNED16, "rw", 0)  # sync start value
-        )
+        od[0x1800 + index] = tpdo_record
 
     def map_objects(self, *variables: Variable):
         for variable in self._objects:

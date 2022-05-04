@@ -1,5 +1,6 @@
 import struct
 from binascii import crc_hqx
+from typing import Tuple
 
 from .server import SDODomainAbort, SDOServer, TransferState, SDO_STRUCT
 
@@ -25,7 +26,7 @@ class DownloadManager:
         self._handler_callback = None
         self._handler: BaseDownloadHandler = None
 
-        self._variable = None
+        self._multiplexor: Tuple[int, int] = None
         self._state = TransferState.NONE
 
         self._buffer = bytearray()
@@ -52,8 +53,8 @@ class DownloadManager:
         self._toggle_bit = False
         self._buffer.clear()
 
-    def on_abort(self, variable):
-        if self._state != TransferState.NONE and self._variable == variable:
+    def on_abort(self, multiplexor):
+        if self._state != TransferState.NONE and self._multiplexor == multiplexor:
             self._abort()
 
     def _receive(self, data: bytes):
@@ -62,7 +63,7 @@ class DownloadManager:
                 self._handler.on_receive(data)
             except:
                 self._abort()
-                raise SDODomainAbort(0x08000020, self._variable)  # data can't be stored
+                raise SDODomainAbort(0x08000020, self._multiplexor)  # data can't be stored
         else:
             self._buffer.extend(data)
 
@@ -77,29 +78,30 @@ class DownloadManager:
             if self._handler:
                 self._handler.on_finish()
             else:
-                value = self._variable.unpack(self._buffer)
+                variable = self._server.lookup(*self._multiplexor)
+                value = variable.unpack(self._buffer)
 
                 if (
-                    self._variable.minimum is not None
-                    and value < self._variable.minimum
+                    variable.minimum is not None
+                    and value < variable.minimum
                 ):
-                    raise SDODomainAbort(0x06090032, self._variable)  # value too low
+                    raise SDODomainAbort(0x06090032, self._multiplexor)  # value too low
 
                 if (
-                    self._variable.maximum is not None
-                    and value > self._variable.maximum
+                    variable.maximum is not None
+                    and value > variable.maximum
                 ):
-                    raise SDODomainAbort(0x06090031, self._variable)  # value too high
+                    raise SDODomainAbort(0x06090031, self._multiplexor)  # value too high
 
-                self._server.node.object_dictionary.write(self._variable, value)
+                self._server.node.object_dictionary.write(*self._multiplexor, value)
         except struct.error:
             raise SDODomainAbort(
-                0x06070010, self._variable
+                0x06070010, self._multiplexor
             )  # datatype size is not matching
         except SDODomainAbort as e:
             raise e
         except Exception as e:
-            raise SDODomainAbort(0x08000020, self._variable)  # data can't be stored
+            raise SDODomainAbort(0x08000020, self._multiplexor)  # data can't be stored
         finally:
             self._init(TransferState.NONE)
 
@@ -118,7 +120,7 @@ class DownloadManager:
 
         if not cmd & 0x02:  # segmented transfer (not expitited)
             self._init(TransferState.SEGMENT)
-            self._variable = variable
+            self._multiplexor = (index, subindex)
 
             if cmd & 0x01:  # size specified
                 size = int.from_bytes(msg[4:], "little")
@@ -127,7 +129,7 @@ class DownloadManager:
 
             if self._handler_callback:
                 self._handler = self._handler_callback(
-                    self._server.node, variable, size
+                    self._server.node, index, subindex, size
                 )
 
             self._server.node.adapter.send(self._server.cob_tx, response)
@@ -141,9 +143,9 @@ class DownloadManager:
         self._init(TransferState.NONE)
 
         if self._handler_callback:
-            self._handler = self._handler_callback(self._server.node, variable, size)
+            self._handler = self._handler_callback(self._server.node, index, subindex, size)
 
-        self._variable = variable
+        self._multiplexor = (index, subindex)
         self._receive(msg[4 : 4 + size])
         self._finish()
 
@@ -153,14 +155,14 @@ class DownloadManager:
         if self._state != TransferState.SEGMENT:
             self._abort()
             raise SDODomainAbort(
-                0x05040001, variable=False
+                0x05040001, multiplexor=False
             )  # client command specificer not valid
 
         toggle_bit = bool(msg[0] & 0x10)
 
         if toggle_bit != self._toggle_bit:
             self._abort()
-            raise SDODomainAbort(0x05030000, self._variable)  # toggle bit not altered
+            raise SDODomainAbort(0x05030000, self._multiplexor)  # toggle bit not altered
 
         self._toggle_bit = not self._toggle_bit
 
@@ -188,7 +190,7 @@ class DownloadManager:
             raise SDODomainAbort(0x06010002)  # write a read-only object
 
         self._init(TransferState.BLOCK)
-        self._variable = variable
+        self._multiplexor = (index, subindex)
 
         self._crc = 0 if cmd & 0x04 else None
 
@@ -198,7 +200,7 @@ class DownloadManager:
             size = None
 
         if self._handler_callback:
-            self._handler = self._handler_callback(self._server.node, variable, size)
+            self._handler = self._handler_callback(self._server.node, index, subindex, size)
 
         self._sequence_number = 1
 
@@ -211,7 +213,7 @@ class DownloadManager:
     def download_sub_block(self, msg: bytes):
         if self._sequence_number != msg[0] & 0x7F:
             self._abort()
-            raise SDODomainAbort(0x05040003, self._variable)  # invalid sequence number
+            raise SDODomainAbort(0x05040003, self._multiplexor)  # invalid sequence number
 
         last_sub_block = bool(msg[0] & 0x80)
 
@@ -242,7 +244,7 @@ class DownloadManager:
         if self._state != TransferState.BLOCK_END:
             self._abort()
             raise SDODomainAbort(
-                0x05040001, variable=False
+                0x05040001, multiplexor=False
             )  # client command specificer not valid
 
         size = 7 - ((msg[0] >> 2) & 0x07)
@@ -251,7 +253,7 @@ class DownloadManager:
             self._crc = crc_hqx(self._buffer[-7:][:size], self._crc)
             if self._crc != struct.unpack("<H", msg[1:3])[0]:
                 self._abort()
-                raise SDODomainAbort(0x05040004, self._variable)  # CRC invalid
+                raise SDODomainAbort(0x05040004, self._multiplexor)  # CRC invalid
 
         if self._handler:
             self._receive(self._buffer[:size])

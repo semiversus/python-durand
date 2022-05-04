@@ -4,7 +4,7 @@ from binascii import crc_hqx
 
 import pytest
 
-from durand import Node, Variable
+from durand import Node, Variable, Record
 from durand.datatypes import DatatypeEnum as DT
 from durand.datatypes import struct_dict
 from durand.services.sdo.server import SDO_STRUCT
@@ -45,19 +45,20 @@ def test_sdo_download_expetited(datatype, with_handler):
     handler_mock = Mock()
     handler_calls = list()
 
-    v = Variable(0x2000, 0, datatype, "rw")
-    n.object_dictionary.add_object(v)
+    v = Variable(datatype, "rw")
+    n.object_dictionary[0x2000] = v
 
-    def download_handler(node, variable, size):
+    def download_handler(node, index, subindex, size):
         assert node == n
-        assert variable == v
+        assert index == 0x2000
+        assert subindex == 0
         return handler_mock
 
     if with_handler:
         n.sdo_servers[0].download_manager.set_handler_callback(download_handler)
 
     mock_write = Mock()
-    n.object_dictionary.update_callbacks[v.multiplexor].add(mock_write)
+    n.object_dictionary.update_callbacks[(0x2000, 0)].add(mock_write)
 
     mock_write.assert_not_called()
     adapter.tx_mock.reset_mock()
@@ -120,8 +121,9 @@ def test_sdo_download_fails():
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x12\x01\x02\x00\x01\x06")
 
     # data size not matching
-    var = Variable(0x2000, 0, DT.UNSIGNED8, "rw", minimum=0x10, maximum=0x20)
-    n.object_dictionary.add_object(var)
+    var = Variable(DT.UNSIGNED8, "rw", minimum=0x10, maximum=0x20)
+    n.object_dictionary[0x2000] = var
+
     adapter.receive(
         0x602, build_sdo_packet(cs=1, index=0x2000, data=b"AB")
     )  # write too many bytes to unsigned8
@@ -157,7 +159,7 @@ def test_sdo_download_fails():
     def fail(value):
         raise ValueError("Validation failed")
 
-    n.object_dictionary.validate_callbacks[var.multiplexor].add(fail)
+    n.object_dictionary.validate_callbacks[(0x2000, 0)].add(fail)
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, data=b"\x10"))
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x20\x00\x20\x00\x00\x08")
 
@@ -168,10 +170,14 @@ def test_sdo_download_fails():
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x01\x20\x00\x00\x00\x02\x06")
 
     # subindex not existing
+    record = Record()
+    record[0] = Variable(DT.UNSIGNED8, 'rw')
+    n.object_dictionary[0x2002] = record
+
     adapter.receive(
-        0x602, build_sdo_packet(cs=1, index=0x2000, subindex=1, data=b"\x10")
+        0x602, build_sdo_packet(cs=1, index=0x2002, subindex=1, data=b"\x10")
     )  # write non existing object
-    adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x20\x01\x11\x00\x09\x06")
+    adapter.tx_mock.assert_called_with(0x582, b"\x80\x02\x20\x01\x11\x00\x09\x06")
 
 
 @pytest.mark.parametrize("datatype", [DT.VISIBLE_STRING, DT.DOMAIN, DT.OCTET_STRING])
@@ -179,8 +185,8 @@ def test_sdo_download_segmented(datatype):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
-    var = Variable(0x2000, 0, datatype, "rw")
-    n.object_dictionary.add_object(var)
+    var = Variable(datatype, "rw")
+    n.object_dictionary[0x2000] = var
 
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000, subindex=0))
     adapter.tx_mock.assert_called_with(0x582, b"\x60\x00\x20\x00\x00\x00\x00\x00")
@@ -191,12 +197,12 @@ def test_sdo_download_segmented(datatype):
     adapter.receive(0x602, b"\x1AHI")
     adapter.tx_mock.assert_called_with(0x582, b"\x30\x00\x00\x00\x00\x00\x00\x00")
 
-    assert n.object_dictionary.read(var) == b""
+    assert n.object_dictionary.read(0x2000, 0) == b""
 
     adapter.receive(0x602, b"\x07JKLM")
     adapter.tx_mock.assert_called_with(0x582, b"\x20\x00\x00\x00\x00\x00\x00\x00")
 
-    assert n.object_dictionary.read(var) == b"ABCDEFGHIJKLM"
+    assert n.object_dictionary.read(0x2000, 0) == b"ABCDEFGHIJKLM"
 
 
 @pytest.mark.parametrize(
@@ -215,11 +221,11 @@ def test_sdo_download_segmented_numeric(datatype):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
-    v = Variable(0x2000, 0, datatype, "rw")
-    n.object_dictionary.add_object(v)
+    v = Variable(datatype, "rw")
+    n.object_dictionary[0x2000] = v
 
     mock_write = Mock()
-    n.object_dictionary.update_callbacks[v.multiplexor].add(mock_write)
+    n.object_dictionary.update_callbacks[(0x2000, 0)].add(mock_write)
 
     mock_write.assert_not_called()
     adapter.tx_mock.reset_mock()
@@ -285,8 +291,8 @@ def test_sdo_download_segmented_fails():
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x12\x01\x02\x00\x01\x06")
 
     # data size not matching
-    var1 = Variable(0x2000, 0, DT.UNSIGNED8, "rw", minimum=0x10, maximum=0x20)
-    n.object_dictionary.add_object(var1)
+    var1 = Variable(DT.UNSIGNED8, "rw", minimum=0x10, maximum=0x20)
+    n.object_dictionary[0x2000] = var1
 
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
     adapter.receive(0x602, b"\x01" + bytes(7))  # write too many bytes to unsigned8
@@ -328,13 +334,13 @@ def test_sdo_download_segmented_fails():
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x20\x00\x00\x00\x03\x05")
 
     # write not working
-    var2 = Variable(0x2001, 0, DT.UNSIGNED8, "rw")
-    n.object_dictionary.add_object(var2)
+    var2 = Variable(DT.UNSIGNED8, "rw")
+    n.object_dictionary[0x2001] = var2
 
     def fail(value):
         raise ValueError("Validation failed")
 
-    n.object_dictionary.validate_callbacks[var2.multiplexor].add(fail)
+    n.object_dictionary.validate_callbacks[(0x2001, 0)].add(fail)
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
     adapter.receive(0x602, b"\x0D\x10" + bytes(6))  # write 16
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x01\x20\x00\x20\x00\x00\x08")
@@ -352,7 +358,7 @@ def test_sdo_download_segmented_fails():
             call(0x582, b"\x80\x00\x00\x00\x01\x00\x04\x05"),
         ]
     )
-    assert n.object_dictionary.read(var1) == 32
+    assert n.object_dictionary.read(0x2000, 0) == 32
 
     # abort another transfer
     adapter.tx_mock.reset_mock()
@@ -364,23 +370,23 @@ def test_sdo_download_segmented_fails():
     adapter.tx_mock.assert_has_calls(
         [call(0x582, build_sdo_packet(3, 0x2000)), call(0x582, b"\x20" + bytes(7))]
     )
-    assert n.object_dictionary.read(var1) == 17
+    assert n.object_dictionary.read(0x2000, 0) == 17
 
 
 def test_sdo_download_segmented_handler():
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
-    var1 = Variable(0x2000, 0, DT.DOMAIN, "rw")
-    var2 = Variable(0x2001, 0, DT.DOMAIN, "rw")
+    var1 = Variable(DT.DOMAIN, "rw")
+    var2 = Variable(DT.DOMAIN, "rw")
 
-    n.object_dictionary.add_object(var1)
-    n.object_dictionary.add_object(var2)
+    n.object_dictionary[0x2000] = var1
+    n.object_dictionary[0x2001] = var2
 
     handler_mock = Mock()
 
-    def download_callback(node: None, variable: Variable, size: int):
-        if variable.index == 0x2001:
+    def download_callback(node: None, index: int, subindex: int, size: int):
+        if index == 0x2001:
             return handler_mock
 
     n.sdo_servers[0].download_manager.set_handler_callback(download_callback)
@@ -389,7 +395,7 @@ def test_sdo_download_segmented_handler():
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2000))
     adapter.receive(0x602, b"\x0D\x10" + bytes(6))
 
-    assert n.object_dictionary.read(var1) == b"\x10"
+    assert n.object_dictionary.read(0x2000, 0) == b"\x10"
 
     handler_mock.assert_not_called()
 
@@ -397,7 +403,7 @@ def test_sdo_download_segmented_handler():
     adapter.receive(0x602, build_sdo_packet(cs=1, index=0x2001))
     adapter.receive(0x602, b"\x0D\x11" + bytes(6))
 
-    assert n.object_dictionary.read(var2) == b""
+    assert n.object_dictionary.read(0x2001, 0) == b""
     handler_mock.on_receive.assert_called_once_with(b"\x11")
     handler_mock.on_finish.assert_called_once_with()
     handler_mock.on_abort.assert_not_called()
@@ -410,7 +416,7 @@ def test_sdo_download_segmented_handler():
     adapter.receive(0x602, b"\x1D\x11" + bytes(6))
     adapter.receive(0x602, b"\x80\x01\x20\x00\x01\x02\x03\x04")
 
-    assert n.object_dictionary.read(var2) == b""
+    assert n.object_dictionary.read(0x2001, 0) == b""
     handler_mock.on_receive.assert_not_called()
     handler_mock.on_finish.assert_not_called()
     handler_mock.on_abort.assert_called_once_with()
@@ -426,15 +432,16 @@ def test_sdo_download_block(size, crc, with_handler, with_size):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
-    var = Variable(0x2000, 0, DT.DOMAIN, "rw")
-    n.object_dictionary.add_object(var)
+    var = Variable(DT.DOMAIN, "rw")
+    n.object_dictionary[0x2000] = var
 
     handler_mock = Mock()
     handler_calls = list()
 
-    def download_handler(node, variable, size):
+    def download_handler(node, index, subindex, size):
         assert node == n
-        assert variable == var
+        assert index == 0x2000
+        assert subindex == 0
         return handler_mock
 
     if with_handler:
@@ -499,10 +506,10 @@ def test_sdo_download_block(size, crc, with_handler, with_size):
     adapter.tx_mock.assert_called_once_with(0x582, b"\xA1" + bytes(7))
 
     if with_handler:
-        assert n.object_dictionary.read(var) == b""
+        assert n.object_dictionary.read(0x2000, 0) == b""
         assert handler_mock.mock_calls == handler_calls
     else:
-        assert n.object_dictionary.read(var) == b"\xAA" * size
+        assert n.object_dictionary.read(0x2000, 0) == b"\xAA" * size
 
 
 def test_sdo_block_failed():
@@ -517,8 +524,8 @@ def test_sdo_block_failed():
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x12\x01\x02\x00\x01\x06")
 
     # wrong sequence number
-    var = Variable(0x2000, 0, DT.DOMAIN, "rw")
-    n.object_dictionary.add_object(var)
+    var = Variable(DT.DOMAIN, "rw")
+    n.object_dictionary[0x2000] = var
 
     adapter.tx_mock.reset_mock()
 
@@ -547,7 +554,7 @@ def test_sdo_block_failed():
     handler_mock = Mock()
     handler_mock.on_receive.side_effect = ValueError()
 
-    def download_handler(node, variable, size):
+    def download_handler(node, index, subindex, size):
         return handler_mock
 
     n.sdo_servers[0].download_manager.set_handler_callback(download_handler)
@@ -577,11 +584,11 @@ def test_sdo_upload_expetited(datatype):
         b"\x01\x02\x03\x04"[: struct_dict[datatype].size]
     )[0]
 
-    v = Variable(0x2000, 0, datatype, "rw", default=value)
-    n.object_dictionary.add_object(v)
+    v = Variable(datatype, "rw", value=value)
+    n.object_dictionary[0x2000] =  v
 
     mock_write = Mock()
-    n.object_dictionary.update_callbacks[v.multiplexor].add(mock_write)
+    n.object_dictionary.update_callbacks[(0x2000, 0)].add(mock_write)
 
     mock_write.assert_not_called()
     adapter.tx_mock.reset_mock()
@@ -605,20 +612,20 @@ def test_sdo_upload_fails():
     n = Node(adapter, 0x02)
 
     # read 'wo' variables
-    v = Variable(0x2000, 0, DT.INTEGER8, "wo", default=0)
-    n.object_dictionary.add_object(v)
+    v = Variable(DT.INTEGER8, "wo", value=0)
+    n.object_dictionary[0x2000] = v
 
     adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2000))  # wo entry
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x00\x20\x00\x01\x00\x01\x06")
 
     # read not working
-    v = Variable(0x2001, 0, DT.INTEGER8, "rw", default=0)
-    n.object_dictionary.add_object(v)
+    v = Variable(DT.INTEGER8, "rw", value=0)
+    n.object_dictionary[0x2001] = v
 
     def fail():
         raise ValueError("Validation failed")
 
-    n.object_dictionary.set_read_callback(v.multiplexor, fail)
+    n.object_dictionary.set_read_callback(0x2001, 0, fail)
     adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2001))
     adapter.tx_mock.assert_called_with(0x582, b"\x80\x01\x20\x00\x20\x00\x00\x08")
 
@@ -627,8 +634,8 @@ def test_upload_segmented():
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
-    v = Variable(0x2000, 0, DT.DOMAIN, "ro", default=b"ABCDEFGHIJKLMNO")
-    n.object_dictionary.add_object(v)
+    v = Variable(DT.DOMAIN, "ro", value=b"ABCDEFGHIJKLMNO")
+    n.object_dictionary[0x2000] = v
 
     adapter.receive(0x602, build_sdo_packet(cs=2, index=0x2000))  # init upload
     adapter.tx_mock.assert_called_with(
@@ -668,17 +675,17 @@ def test_upload_segmented_various_length(with_handler, size, with_pst):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
-    v = Variable(0x2000, 0, DT.DOMAIN, "ro", default=b"")
-    n.object_dictionary.add_object(v)
+    v = Variable(DT.DOMAIN, "ro", value=b"")
+    n.object_dictionary[0x2000] = v
 
-    def handler_callback(node: Node, variable: Variable):
-        if variable == v:
+    def handler_callback(node: Node, index: int, subindex:int):
+        if index == 0x2000:
             return UploadHandler(b"\xAA" * size)
 
     if with_handler:
         n.sdo_servers[0].upload_manager.set_handler_callback(handler_callback)
     else:
-        n.object_dictionary.write(v, b"\xAA" * size, False)
+        n.object_dictionary.write(0x2000, 0, b"\xAA" * size, False)
 
     if with_pst:
         adapter.receive(
@@ -733,11 +740,11 @@ def test_block_upload(with_handler):
     adapter = MockAdapter()
     n = Node(adapter, 0x02)
 
-    v = Variable(0x2000, 0, DT.DOMAIN, "ro", default=b"ABCDEFGHIJKLMNO")
-    n.object_dictionary.add_object(v)
+    v = Variable(DT.DOMAIN, "ro", value=b"ABCDEFGHIJKLMNO")
+    n.object_dictionary[0x2000] = v
 
-    def handler_callback(node: Node, variable: Variable):
-        if variable == v:
+    def handler_callback(node: Node, index: int, subindex: int):
+        if index == 0x2000:
             return UploadHandler(b"ABCDEFGHIJKLMNO")
 
     if with_handler:
@@ -788,11 +795,11 @@ def test_block_upload_extended(size, blocksize, with_crc, with_handler, with_siz
     data = (b"ABC" * (size // 3 + 1))[:size]
     crc = crc_hqx(data, 0) if with_crc else 0
 
-    v = Variable(0x2000, 0, DT.DOMAIN, "ro", default=data)
-    n.object_dictionary.add_object(v)
+    v = Variable(DT.DOMAIN, "ro", value=data)
+    n.object_dictionary[0x2000] = v
 
-    def handler_callback(node: Node, variable: Variable):
-        if variable == v:
+    def handler_callback(node: Node, index: int, subindex: int):
+        if index == 0x2000:
             handler = UploadHandler(data)
             if not with_size:
                 handler.size = None
