@@ -24,11 +24,12 @@ class TPDO:
         self._transmission_type = 254
         self._objects = ()
 
-
         od = self._node.object_dictionary
 
         tpdo_record = Record()
-        tpdo_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id)  # cob id used by tpdo
+        tpdo_record[1] = Variable(
+            DT.UNSIGNED32, "rw", self._cob_id
+        )  # cob id used by tpdo
         tpdo_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type)
         tpdo_record[3] = Variable(DT.UNSIGNED16, "rw", 0)  # inhibit time [µs]
         tpdo_record[4] = Variable(DT.UNSIGNED16, "rw", 0)  # event timer [ms]

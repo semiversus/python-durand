@@ -121,7 +121,9 @@ class UploadManager:
         try:
             value = self._server.node.object_dictionary.read(index, subindex)
         except:
-            raise SDODomainAbort(0x08000020, self._multiplexor)  # data can't be transferred
+            raise SDODomainAbort(
+                0x08000020, self._multiplexor
+            )  # data can't be transferred
 
         if is_numeric(variable.datatype):
             value = variable.pack(value)
@@ -187,7 +189,9 @@ class UploadManager:
 
         if toggle_bit != self._toggle_bit:
             self._abort()
-            raise SDODomainAbort(0x05030000, self._multiplexor)  # toggle bit not altered
+            raise SDODomainAbort(
+                0x05030000, self._multiplexor
+            )  # toggle bit not altered
 
         self._toggle_bit = not self._toggle_bit
 

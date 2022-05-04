@@ -52,8 +52,12 @@ class SDOServer:
         od = self._node.object_dictionary
 
         server_record = Record()
-        server_record[1] = Variable(DT.UNSIGNED32, "rw" if index else "ro", self._cob_rx)
-        server_record[2] = Variable(DT.UNSIGNED32, "rw" if index else "ro", self._cob_tx)
+        server_record[1] = Variable(
+            DT.UNSIGNED32, "rw" if index else "ro", self._cob_rx
+        )
+        server_record[2] = Variable(
+            DT.UNSIGNED32, "rw" if index else "ro", self._cob_tx
+        )
 
         if index:
             od.update_callbacks[(0x1200 + index, 1)].add(self._update_cob_rx)
@@ -74,7 +78,9 @@ class SDOServer:
     def _update_subscription(self, state: StateEnum):
         if state == StateEnum.STOPPED:
             self._node.adapter.remove_subscription(self._cob_rx)
-        elif state == StateEnum.PRE_OPERATIONAL and not (self._cob_rx | self._cob_tx) & (1 << 31):
+        elif state == StateEnum.PRE_OPERATIONAL and not (
+            self._cob_rx | self._cob_tx
+        ) & (1 << 31):
             self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
 
     def _update_node(self, state: StateEnum):
@@ -90,9 +96,7 @@ class SDOServer:
         if not ((self._cob_rx | self._cob_tx) & (1 << 31)):
             self._node.adapter.remove_subscription(self._cob_rx & 0x7FF)
 
-        if (not value & (1 << 31)
-            and not self._cob_tx & (1 << 31)
-        ):
+        if not value & (1 << 31) and not self._cob_tx & (1 << 31):
             self._node.adapter.add_subscription(value & 0x7FF, self.handle_msg)
 
         self._cob_rx = value
@@ -102,10 +106,7 @@ class SDOServer:
         if not ((self._cob_rx | self._cob_tx) & (1 << 31)) and value & (1 << 31):
             self._node.adapter.remove_subscription(self._cob_rx & 0x7FF)
 
-        if (
-            not value & (1 << 31)
-            and not self._cob_rx & (1 << 31)
-        ):
+        if not value & (1 << 31) and not self._cob_rx & (1 << 31):
             self._node.adapter.add_subscription(self._cob_rx & 0x7FF, self.handle_msg)
 
         self._cob_tx = value
@@ -120,9 +121,11 @@ class SDOServer:
     @cob_rx.setter
     def cob_rx(self, cob: int):
         if cob is None:
-            cob = 1  << 31
+            cob = 1 << 31
 
-        self._node.object_dictionary.write(0x1200 + self._index, 1, cob, downloaded=False)
+        self._node.object_dictionary.write(
+            0x1200 + self._index, 1, cob, downloaded=False
+        )
 
     @property
     def cob_tx(self):
@@ -134,9 +137,11 @@ class SDOServer:
     @cob_tx.setter
     def cob_tx(self, cob: int):
         if cob is None:
-            cob = 1  << 31
+            cob = 1 << 31
 
-        self._node.object_dictionary.write(0x1200 + self._index, 2, cob, downloaded=False)
+        self._node.object_dictionary.write(
+            0x1200 + self._index, 2, cob, downloaded=False
+        )
 
     @property
     def client_node_id(self):
@@ -144,7 +149,9 @@ class SDOServer:
 
     @client_node_id.setter
     def client_node_id(self, value):
-        return self._node.object_dictionary.write(0x1200 + self._index, 3, value, downloaded=False)
+        return self._node.object_dictionary.write(
+            0x1200 + self._index, 3, value, downloaded=False
+        )
 
     def handle_msg(self, cob_id: int, msg: bytes):
         assert (

@@ -171,7 +171,7 @@ def test_sdo_download_fails():
 
     # subindex not existing
     record = Record()
-    record[0] = Variable(DT.UNSIGNED8, 'rw')
+    record[0] = Variable(DT.UNSIGNED8, "rw")
     n.object_dictionary[0x2002] = record
 
     adapter.receive(
@@ -585,7 +585,7 @@ def test_sdo_upload_expetited(datatype):
     )[0]
 
     v = Variable(datatype, "rw", value=value)
-    n.object_dictionary[0x2000] =  v
+    n.object_dictionary[0x2000] = v
 
     mock_write = Mock()
     n.object_dictionary.update_callbacks[(0x2000, 0)].add(mock_write)
@@ -678,7 +678,7 @@ def test_upload_segmented_various_length(with_handler, size, with_pst):
     v = Variable(DT.DOMAIN, "ro", value=b"")
     n.object_dictionary[0x2000] = v
 
-    def handler_callback(node: Node, index: int, subindex:int):
+    def handler_callback(node: Node, index: int, subindex: int):
         if index == 0x2000:
             return UploadHandler(b"\xAA" * size)
 

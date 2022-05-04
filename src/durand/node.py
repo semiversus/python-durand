@@ -14,6 +14,7 @@ from .datatypes import DatatypeEnum as DT
 
 SDO_SERVERS = 127
 
+
 @dataclass
 class NodeCapabilities:
     sdo_servers: int
@@ -25,8 +26,13 @@ FullNodeCapabilities = NodeCapabilities(sdo_servers=128, rpdos=512, tpdos=512)
 
 
 class Node:
-    def __init__(self, adapter: AdapterABC, node_id: int, od: ObjectDictionary = None,
-                 capabilities: NodeCapabilities = FullNodeCapabilities):
+    def __init__(
+        self,
+        adapter: AdapterABC,
+        node_id: int,
+        od: ObjectDictionary = None,
+        capabilities: NodeCapabilities = FullNodeCapabilities,
+    ):
 
         self.adapter = adapter
         self.node_id = node_id

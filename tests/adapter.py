@@ -8,7 +8,7 @@ class Msg:
     def __init__(self, cob_id: int, *data):
         self.cob_id = cob_id
 
-        self._data = b''
+        self._data = b""
         for part in data:
             if isinstance(part, str):
                 self._data += bytes.fromhex(part)
@@ -17,16 +17,18 @@ class Msg:
             elif isinstance(part, bytes):
                 self._data += part
             else:
-                raise ValueError('Data parts have to be string containing hexcoded bytes, bytes or integers')
+                raise ValueError(
+                    "Data parts have to be string containing hexcoded bytes, bytes or integers"
+                )
 
         if len(self._data) > 8:
-            raise ValueError('Maximum 8 bytes possible (%r)'%self._data)
+            raise ValueError("Maximum 8 bytes possible (%r)" % self._data)
 
     @property
     def data(self):
         return self._data
 
-    def __eq__(self, msg: 'Msg'):
+    def __eq__(self, msg: "Msg"):
         return self.cob_id == msg.cob_id and self._data == msg.data
 
 

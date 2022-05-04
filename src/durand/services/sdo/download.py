@@ -63,7 +63,9 @@ class DownloadManager:
                 self._handler.on_receive(data)
             except:
                 self._abort()
-                raise SDODomainAbort(0x08000020, self._multiplexor)  # data can't be stored
+                raise SDODomainAbort(
+                    0x08000020, self._multiplexor
+                )  # data can't be stored
         else:
             self._buffer.extend(data)
 
@@ -81,17 +83,13 @@ class DownloadManager:
                 variable = self._server.lookup(*self._multiplexor)
                 value = variable.unpack(self._buffer)
 
-                if (
-                    variable.minimum is not None
-                    and value < variable.minimum
-                ):
+                if variable.minimum is not None and value < variable.minimum:
                     raise SDODomainAbort(0x06090032, self._multiplexor)  # value too low
 
-                if (
-                    variable.maximum is not None
-                    and value > variable.maximum
-                ):
-                    raise SDODomainAbort(0x06090031, self._multiplexor)  # value too high
+                if variable.maximum is not None and value > variable.maximum:
+                    raise SDODomainAbort(
+                        0x06090031, self._multiplexor
+                    )  # value too high
 
                 self._server.node.object_dictionary.write(*self._multiplexor, value)
         except struct.error:
@@ -143,7 +141,9 @@ class DownloadManager:
         self._init(TransferState.NONE)
 
         if self._handler_callback:
-            self._handler = self._handler_callback(self._server.node, index, subindex, size)
+            self._handler = self._handler_callback(
+                self._server.node, index, subindex, size
+            )
 
         self._multiplexor = (index, subindex)
         self._receive(msg[4 : 4 + size])
@@ -162,7 +162,9 @@ class DownloadManager:
 
         if toggle_bit != self._toggle_bit:
             self._abort()
-            raise SDODomainAbort(0x05030000, self._multiplexor)  # toggle bit not altered
+            raise SDODomainAbort(
+                0x05030000, self._multiplexor
+            )  # toggle bit not altered
 
         self._toggle_bit = not self._toggle_bit
 
@@ -200,7 +202,9 @@ class DownloadManager:
             size = None
 
         if self._handler_callback:
-            self._handler = self._handler_callback(self._server.node, index, subindex, size)
+            self._handler = self._handler_callback(
+                self._server.node, index, subindex, size
+            )
 
         self._sequence_number = 1
 
@@ -213,7 +217,9 @@ class DownloadManager:
     def download_sub_block(self, msg: bytes):
         if self._sequence_number != msg[0] & 0x7F:
             self._abort()
-            raise SDODomainAbort(0x05040003, self._multiplexor)  # invalid sequence number
+            raise SDODomainAbort(
+                0x05040003, self._multiplexor
+            )  # invalid sequence number
 
         last_sub_block = bool(msg[0] & 0x80)
 

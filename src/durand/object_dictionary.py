@@ -82,9 +82,10 @@ class Record:
     def __setitem__(self, subindex: int, variable: Variable):
         self.variables[subindex] = variable
 
-    def add_largest_subindex(self, access='const'):
+    def add_largest_subindex(self, access="const"):
         largest_subindex = max(self.variables)
         self[0] = Variable(DatatypeEnum.UNSIGNED8, access, value=largest_subindex)
+
 
 @dataclass
 class Array:
