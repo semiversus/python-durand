@@ -72,30 +72,35 @@ class Variable:
         return value
 
 
-@dataclass
 class Record:
-    variables: Dict[int, Variable] = field(default_factory=dict)
+    def __init__(self):
+        self._variables: Dict[int, Variable] = dict()
 
     def __getitem__(self, subindex: int):
-        return self.variables[subindex]
+        if subindex == 0:
+            return Variable(DatatypeEnum.UNSIGNED8, 'const', value=max(self._variables))
+
+        return self._variables[subindex]
 
     def __setitem__(self, subindex: int, variable: Variable):
-        self.variables[subindex] = variable
-
-    def add_largest_subindex(self, access="const"):
-        largest_subindex = max(self.variables)
-        self[0] = Variable(DatatypeEnum.UNSIGNED8, access, value=largest_subindex)
+        self._variables[subindex] = variable
 
 
-@dataclass
 class Array:
-    variables: Dict[int, Variable] = field(default_factory=dict)
+    def __init__(self, variable: Variable, length: int, mutable: bool = False):
+        self._variable = variable
+        self._mutable = mutable
+        self.length = length
 
     def __getitem__(self, subindex: int):
-        return self.variables[subindex]
+        if subindex == 0:
+            access = "rw" if self._mutable else "const"
+            return Variable(DatatypeEnum.UNSIGNED8, access, value=self.length)
 
-    def __setitem__(self, subindex: int, variable: Variable):
-        self.variables[subindex] = variable
+        if subindex > self.length:
+            raise KeyError(f'Subindex {subindex} not available in array')
+
+        return self._variable
 
 
 TObject = Union[Variable, Record, Array]

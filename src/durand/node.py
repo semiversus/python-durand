@@ -66,7 +66,6 @@ class Node:
         identity_record[2] = Variable(DT.UNSIGNED32, "ro", 0)  # product code
         identity_record[3] = Variable(DT.UNSIGNED32, "ro", 0)  # revision number
         identity_record[4] = Variable(DT.UNSIGNED32, "ro", 0)  # serial number
-        identity_record.add_largest_subindex()
 
         od[0x1018] = identity_record
         self.nmt.set_state(StateEnum.PRE_OPERATIONAL)

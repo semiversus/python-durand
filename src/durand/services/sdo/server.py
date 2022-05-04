@@ -68,7 +68,6 @@ class SDOServer:
         else:
             self._node.nmt.state_callbacks.add(self._update_node)
 
-        server_record.add_largest_subindex()
         od[0x1200 + index] = server_record
 
     @property
