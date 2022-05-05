@@ -65,8 +65,6 @@ class MockAdapter(AdapterABC):
     def test(self, messages: List[Msg]):
         tx_calls = list()
 
-        self.tx_mock.reset_mock()
-
         for message in messages:
             if isinstance(message, RxMsg):
                 self.tx_mock.assert_has_calls(tx_calls)
@@ -78,3 +76,5 @@ class MockAdapter(AdapterABC):
 
         self.tx_mock.assert_has_calls(tx_calls)
         assert self.tx_mock.call_count == len(tx_calls)
+
+        self.tx_mock.reset_mock()

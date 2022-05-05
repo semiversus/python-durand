@@ -63,6 +63,6 @@ class NMTService:
             # send bootup message
             self._node.adapter.send(0x700 + self._node.node_id, b"\x00")
 
-        self.state_callbacks.call(state)
-
         self.state = state
+
+        self.state_callbacks.call(state)

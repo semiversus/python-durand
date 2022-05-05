@@ -1,5 +1,5 @@
 from .tpdo import TPDO
-from .tpdo import RPDO
+from .rpdo import RPDO
 
 
 __all__ = ["TPDO", "RPDO"]

@@ -18,9 +18,9 @@ class TPDO:
         self._index = index
 
         if index < 4:
-            self._cob_id = 0x8000_0180 + (index * 0x100) + node.node_id
+            self._cob_id = 0x4000_0180 + (index * 0x100) + node.node_id
         else:
-            self._cob_id = 0x8000_0000
+            self._cob_id = 0xC000_0000
 
         self._transmission_type = 254
 
@@ -31,14 +31,13 @@ class TPDO:
         od = self._node.object_dictionary
 
         param_record = Record()
-        access = "ro" if index < 4 else "rw"
-        param_record[1] = Variable(DT.UNSIGNED32, access, self._cob_id)  # used cob id
+        param_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id)  # used cob id
         param_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type)
         od[0x1800 + index] = param_record
 
-        od.download_callbacks[(0x1A00 + index, 1)].add(self._downloaded_cob_id)
+        od.download_callbacks[(0x1800 + index, 1)].add(self._downloaded_cob_id)
 
-        map_array = Array(Variable(DT.UNSIGNED32, "rw"), length=8)
+        map_array = Array(Variable(DT.UNSIGNED32, "rw"), length=8, mutable=True)
         od[0x1A00 + index] = map_array
 
         od.write(0x1A00 + index, 0, 0)  # set number of mapped objects to 0
@@ -49,40 +48,53 @@ class TPDO:
     def _update_nmt_state(self, state: StateEnum):
         if state == StateEnum.OPERATIONAL:
             if self._index < 4:
-                self._cob_id = (self._cob_id & 0xE000_000) + (self._index * 0x100) + self._node.node_id
-                
+                self._cob_id = (self._cob_id & 0xE000_0000) + 0x180 + (self._index * 0x100) + self._node.node_id
+
             self._activate_mapping()
         else:
             self._deactivate_mapping()
 
     def _downloaded_cob_id(self, value: int):
-        self._cob_id = (self._cob_id & 0xE000_0000) + (value & 0x1FFF_FFFF)
+        self._cob_id = value
+        # TODO: check RTR flag to be cleared
 
         if value & (1 << 31):
-            self.disable()
+            self._deactivate_mapping()
         else:
-            self.enable()
+            self._activate_mapping()
 
-    def enable(self):
-        self._cob_id &= ~(1 << 31)
-        self._activate_mapping()
+    @property
+    def enable(self) -> bool:
+        return not self._cob_id & (1 << 31)
 
-    def disable(self):
-        self._cob_id |= 1 << 31
-        self._deactivate_mapping()
+    @enable.setter
+    def enable(self, value: bool):
+        if value:
+            self._cob_id &= ~(1 << 31)
+            self._activate_mapping()
+        else:
+            self._cob_id |= 1 << 31
+            self._deactivate_mapping()
+
+        self._node.object_dictionary.write(0x1800 + self._index, 1, self._cob_id, downloaded=False)
 
     def _downloaded_map_length(self, length):
         multiplexors = list()
 
         for subindex in range(1, length + 1):
-            value = self._node.object_dictionary.read(0x1A00 + index, subindex)
+            value = self._node.object_dictionary.read(0x1A00 + self._index, subindex)
             index, subindex = value >> 16, (value >> 8) & 0xFF
             multiplexors.append((index, subindex))
 
-        self._map(*multiplexors)
+        self._map(multiplexors)
 
-    def map(self, *multiplexors: TMultiplexor):
-        self._map(*multiplexors)
+    @property
+    def mapping(self):
+        return self._multiplexors
+
+    @mapping.setter
+    def mapping(self, multiplexors: TMultiplexor):
+        self._map(multiplexors)
         self._node.object_dictionary.write(0x1A00 + self._index, 0, len(multiplexors), downloaded=False)
         for _entry, multiplexor in enumerate(multiplexors):
             index, subindex = multiplexor
@@ -90,11 +102,11 @@ class TPDO:
             value = (index << 16) + (subindex << 8) + variable.size
             self._node.object_dictionary.write(0x1A00 + self._index, _entry + 1, value, downloaded=False)
 
-    def _map(self, *multiplexors: TMultiplexor):
+    def _map(self, multiplexors: TMultiplexor):
         self._deactivate_mapping()
-        self._multiplexors = multiplexors
+        self._multiplexors = tuple(multiplexors)
         self._activate_mapping()
-        
+
     def _deactivate_mapping(self):
         if self._cache is None:  # check if already deactivated
             return
@@ -110,13 +122,13 @@ class TPDO:
     def _activate_mapping(self):
         if self._cache is not None:  # check if already activated
             return
-        
-        if not self._cob_id & (1 << 31) or not self._multiplexors:
+
+        if self._cob_id & (1 << 31) or not self._multiplexors:
             return
-        
+
         if self._node.nmt.state != StateEnum.OPERATIONAL:
             return
-        
+
         self._pack_functions = []
         self._cache = []
 
@@ -124,7 +136,7 @@ class TPDO:
 
         for index, multiplexor in enumerate(self._multiplexors):
             variable = self._node.object_dictionary.lookup(*multiplexor)
-            
+
             def pack(value, index=index, variable=variable):
                 self._cache[index] = variable.pack(value)
                 if self._transmission_type in (254, 255):
@@ -135,24 +147,9 @@ class TPDO:
             self._pack_functions.append(pack)
             update_callbacks[multiplexor].add(pack)
 
+        if self._transmission_type in (254, 255):
+            self._transmit()
+
     def _transmit(self):
         data = b"".join(self._cache)
         self._node.adapter.send(self._cob_id & 0x1FFF_FFFF, data)
-
-class RPDO:
-    def __init__(self, node: "Node", index: int):
-        self._node = node
-
-        cob_id = 0x200 + index * 0x100 + node.node_id
-        node.adapter.add_subscription(cob_id=cob_id, callback=self.handle_msg)
-
-        self._objects = ()
-
-    def map_objects(self, *variables: Variable):
-        self._objects = variables
-
-    def handle_msg(self, cob_id: int, msg: bytes):
-        for variable in self._objects:
-            value = variable.unpack(msg[: variable.size])
-            self._node.object_dictionary.write(variable, value)
-            msg = msg[variable.size :]
