@@ -7,6 +7,7 @@ from .services.sdo import SDOServer
 from .services.pdo import TPDO, RPDO
 from .services.nmt import NMTService, StateEnum
 from .services.lss import LSS
+from .services.sync import Sync
 from .services.heartbeat import HeartbeatProducer
 from .object_dictionary import Variable, Record
 from .datatypes import DatatypeEnum as DT
@@ -40,6 +41,7 @@ class Node:
         self.object_dictionary = od
 
         self.nmt = NMTService(self)
+        self.sync = Sync(self)
 
         self.tpdo = [TPDO(self, i) for i in range(capabilities.tpdos)]
         self.rpdo = [RPDO(self, i) for i in range(capabilities.rpdos)]
@@ -59,6 +61,12 @@ class Node:
 
         od[0x1000] = Variable(DT.UNSIGNED32, "ro", 0)  # device type
         od[0x1001] = Variable(DT.UNSIGNED8, "ro", 0)  # error register
+
+        od[0x1008] = Variable(DT.VISIBLE_STRING, "ro", b"")  # manufacturer device name
+        od[0x1009] = Variable(DT.VISIBLE_STRING, "ro", b"")  # manufacturer hardware version
+        od[0x100A] = Variable(DT.VISIBLE_STRING, "ro", b"")  # manufacturer software version
+
+
 
         # Identity object
         identity_record = Record()
