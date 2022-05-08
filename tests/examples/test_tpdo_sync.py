@@ -1,4 +1,4 @@
-""" Testing RX and TX PDOs """
+""" Testing TxPDOs with syned transmission type """
 
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT

@@ -1,4 +1,4 @@
-""" Testing RX and TX PDOs """
+""" Testing TxPDOs """
 
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
@@ -17,7 +17,7 @@ def test_local_config_tpdo():
 
     node.tpdo[0].mapping = [(0x2000, 0)]
 
-    # receive PDO message after changing into Operational state
+    # send PDO message after changing into Operational state
     adapter.test(
         [   TxMsg(0x702, "00"),  # boot-up message from NMT
 
@@ -42,7 +42,7 @@ def test_local_config_tpdo():
             RxMsg(0x602, "40 00 18 01 00 00 00 00"),  # get cob id for sending
             TxMsg(0x582, "43 00 18 01 82 01 00 40"),  # receive 0x4000_0182
             RxMsg(0x602, "40 00 18 02 00 00 00 00"),  # get transmission type
-            TxMsg(0x582, "4F 00 18 02 FE 00 00 00"),  # receive 0xFE
+            TxMsg(0x582, "4F 00 18 02 FF 00 00 00"),  # receive 0xFF
         ]
     )
 

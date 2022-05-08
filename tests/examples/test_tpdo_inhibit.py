@@ -1,4 +1,4 @@
-""" Testing RX and TX PDOs """
+""" Testing TxPDOs with inhibt time """
 
 from durand import Node, Variable, set_scheduler
 from durand.scheduler import VirtualScheduler

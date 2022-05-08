@@ -81,7 +81,7 @@ class TPDO:
         else:
             self._cob_id = 0xC000_0000
 
-        self._transmission_type = 254
+        self._transmission_type = 255
 
         self._multiplexors = ()
         self._pack_functions = None
@@ -101,7 +101,6 @@ class TPDO:
         od.download_callbacks[(0x1800 + index, 1)].add(self._downloaded_cob_id)
         od.download_callbacks[(0x1800 + index, 2)].add(self._downloaded_transmission_type)
         od.update_callbacks[(0x1800 + index, 3)].add(self._update_inhibit_time)
-
 
         map_array = Array(Variable(DT.UNSIGNED32, "rw"), length=8, mutable=True)
         od[0x1A00 + index] = map_array
@@ -242,7 +241,7 @@ class TPDO:
 
             def pack(value, index=index, variable=variable):
                 self._cache[index] = variable.pack(value)
-                if self._transmission_type in (254, 255):
+                if self._transmission_type == 255:
                     self.transmit()
                 elif self._transmission_type == 0:
                     self._sync_handler.update()
@@ -252,7 +251,7 @@ class TPDO:
             self._pack_functions.append(pack)
             update_callbacks[multiplexor].add(pack)
 
-        if self._transmission_type in (254, 255):
+        if self._transmission_type == 255:
             self.transmit()
         elif self._transmission_type == 0:
             self._sync_handler.update()
