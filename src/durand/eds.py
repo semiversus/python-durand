@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from re import match
 from datetime import datetime
 
@@ -26,8 +26,6 @@ class FileInfo:
     ModificationTime: str = None
     ModificationDate: str = None
     ModifiedBy: str = None
-
-    Comment: str = None
 
     def validate(self):
         if not 0 <= self.FileVersion <= 255:
@@ -71,18 +69,40 @@ class FileInfo:
                 raise ValueError("ModificationTime format invalid")
 
 
+    @property
+    def content(self):
+        content = '[FileInfo]\n'
+        for field in fields(self):
+            content += f'{field.name}={getattr(self, field.name):s}\n'
+        return content
+
 class EDS:
-    def __init__(self):
-        self.FileInfo = FileInfo()
+    def __init__(self, node: 'Node'):
+        self._node = node
+
+        self.file_info = FileInfo()
+        self.comments = ""
+
+    @property
+    def content(self):
+        content = self.file_info.content + '\n'
+
+        if self.comments:
+            lines = self.comments.strip().splitlines()
+            content += f'[Comments]\nLines={len(lines)}\n'
+            for index, line in enumerate(lines):
+                content += f'Line{index}={line:s}\n'
+            content += '\n'
+
+        objects = dict(self._node.object_dictionary)
+        content += '[MandatoryObjects]\nSupportedObjects=3\n1=0x1000\n2=0x1001\n3=0x1018\n\n'
+
+
+
 
 
 class EDSProvider:
     def __init__(self, node: Node, eds: EDS = None):
         self._node = node
-        self.eds = eds or EDS()
 
-        eds_store_variable = Variable(0x1021, 0, DatatypeEnum.DOMAIN, "ro")
-        self._node.object_dictionary.add_object(eds_store_variable)
-        self._node.object_dictionary.set_read_callback(
-            eds_store_variable, self.generate
-        )
+        self._node.object_dictionary[0x1021] = Variable(DatatypeEnum.DOMAIN, "ro")

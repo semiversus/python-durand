@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import Any, Dict, Tuple, Callable, Union
+import itertools
 import logging
 
 from .datatypes import DatatypeEnum, struct_dict, is_numeric, is_float
@@ -186,3 +187,7 @@ class ObjectDictionary:
 
     def set_read_callback(self, index: int, subindex: int, callback) -> None:
         self._read_callbacks[(index, subindex)] = callback
+
+    def __iter__(self):
+        objects = itertools.chain(self._objects.items(), self._variables.items())
+        return iter(sorted(objects, key=lambda n: n[0]))

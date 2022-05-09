@@ -2,13 +2,13 @@ import asyncio
 
 from durand.object_dictionary import ObjectDictionary
 from durand.datatypes import DatatypeEnum
-from durand import Node, Variable
+from durand import MinimalNode, Variable
 from durand.adapters.can import CANAdapter
 
 
 adapter = CANAdapter(interface='socketcan', channel='vcan0', loop=asyncio.get_event_loop())
 
-node = Node(adapter, 0x0E)
+node = MinimalNode(adapter, 0x0E)
 
 state_control = Variable(0x2000, 0, DatatypeEnum.UNSIGNED8, access='rw', default=0)
 node.object_dictionary.add_object(state_control)

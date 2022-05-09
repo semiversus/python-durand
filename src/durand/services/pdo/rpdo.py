@@ -128,7 +128,7 @@ class RPDO:
             self._node.sync.callbacks.remove(self._on_sync)
 
         self._node.adapter.remove_subscription(cob_id=self._cob_id & 0x1FFF_FFFF)
-        
+
     def _activate_mapping(self):
         if self._unpack_function is not None:
             return
@@ -149,9 +149,9 @@ class RPDO:
             for variable in variables:
                 values.append(variable.unpack(data[:variable.size]))
                 data = data[variable.size:]
-            
+
             return values
-        
+
         self._unpack_function = unpack
 
         if self._transmission_type <= 240:
@@ -162,7 +162,7 @@ class RPDO:
     def _on_sync(self):
         if self._synced_msg is None:
             return
-        
+
         self._write_data(self._synced_msg)
         self._synced_msg = None
 
@@ -170,11 +170,14 @@ class RPDO:
         if self._transmission_type <= 240:
             self._synced_msg = msg
             return
-        
+
         self._write_data(msg)
-    
+
     def _write_data(self, msg: bytes):
         values = self._unpack_function(msg)
 
         for multiplexor, value in zip(self._multiplexors, values):
-            self._node.object_dictionary.write(*multiplexor, value)
+            try:
+                self._node.object_dictionary.write(*multiplexor, value)
+            except:  # there is no possibility to response in such a case
+                pass
