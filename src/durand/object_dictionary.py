@@ -22,6 +22,7 @@ class Variable:
     factor: float = 1
     minimum: float = None
     maximum: float = None
+    name: str = None
 
     def __post_init__(self):
         if self.datatype not in DatatypeEnum:
@@ -74,7 +75,8 @@ class Variable:
 
 
 class Record:
-    def __init__(self):
+    def __init__(self, name: str = None):
+        self._name = name
         self._variables: Dict[int, Variable] = dict()
 
     def __getitem__(self, subindex: int):
@@ -88,7 +90,8 @@ class Record:
 
 
 class Array:
-    def __init__(self, variable: Variable, length: int, mutable: bool = False):
+    def __init__(self, variable: Variable, length: int, mutable: bool = False, name: str = None):
+        self._name = name
         self._variable = variable
         self._mutable = mutable
         self.length = length

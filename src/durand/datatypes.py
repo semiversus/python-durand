@@ -3,20 +3,20 @@ from enum import IntEnum
 
 
 class DatatypeEnum(IntEnum):
-    BOOLEAN = 1
-    INTEGER8 = 2
-    INTEGER16 = 3
-    INTEGER32 = 4
+    BOOLEAN = 0x01
+    INTEGER8 = 0x02
+    INTEGER16 = 0x03
+    INTEGER32 = 0x04
     INTEGER64 = 0x15
-    UNSIGNED8 = 5
-    UNSIGNED16 = 6
-    UNSIGNED32 = 7
+    UNSIGNED8 = 0x05
+    UNSIGNED16 = 0x06
+    UNSIGNED32 = 0x07
     UNSIGNED64 = 0x1B
-    VISIBLE_STRING = 9
-    OCTET_STRING = 10
-    REAL32 = 8
+    VISIBLE_STRING = 0x09
+    OCTET_STRING = 0x0A
+    REAL32 = 0x08
     REAL64 = 0x11
-    DOMAIN = 15
+    DOMAIN = 0x0F
 
 
 def is_numeric(datatype: DatatypeEnum):

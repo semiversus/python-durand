@@ -76,6 +76,48 @@ class FileInfo:
             content += f'{field.name}={getattr(self, field.name):s}\n'
         return content
 
+
+def extract_objects(d: dict, indices: list) -> dict:
+    extracted_dict = {index: obj for index, obj in d if index in indices}
+    for index in indices:
+        d.pop(index, None)
+
+    return extracted_dict
+
+def describe_variable(index: int, subindex: int, variable: Variable) -> str:
+    name = '{index:04X}' + ('' if subindex is None else f'sub{subindex}')
+    content = f'[{name}]\n'
+
+    if variable.name:
+        content += f'ParameterName={variable.name}'
+    else:
+        content += f'ParameterName=Variable{name}'
+
+    content += 'ObjectType=0x7\n'
+    content += f'Datatype=0x{variable.datatype}\n'
+    content += f'AccessType={variable.access}\n'
+    if variable.value is not None:
+        content += f'DefaultValue={variable.value}'
+    content += 'PDOMapping=1\n'
+    return content
+
+def describe_object(index: int, object) -> str:
+    if isinstance(object, Variable):
+        return describe_variable(index, None, object)
+
+def describe_section(name: str, objects: dict):
+    content = f'[{name}]\nSupportedObjects={len(objects)}\n'
+
+    for obj_nr, index in enumerate(objects):
+        content += f'{obj_nr}=0x{index:04X}\n'
+
+    content += '\n'
+
+    for index, object in objects.items():
+        content += describe_object(index, object)
+        content += '\n'
+
+
 class EDS:
     def __init__(self, node: 'Node'):
         self._node = node
@@ -95,7 +137,10 @@ class EDS:
             content += '\n'
 
         objects = dict(self._node.object_dictionary)
-        content += '[MandatoryObjects]\nSupportedObjects=3\n1=0x1000\n2=0x1001\n3=0x1018\n\n'
+
+        mandatory_objects = extract_objects(objects, (0x1000, 0x1001, 0x1018))
+        content += describe_section('MandatoryObjects', mandatory_objects)
+
 
 
 
