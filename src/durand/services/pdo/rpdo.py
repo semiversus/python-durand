@@ -28,15 +28,16 @@ class RPDO:
 
         od = self._node.object_dictionary
 
-        param_record = Record()
-        param_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id)  # used cob id
-        param_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type)
+        param_record = Record(name='RPDO Communication Parameter')
+        param_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id, name='COB-ID used by RPDO')
+        param_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type, name='Transmission Type')
         od[0x1400 + index] = param_record
 
         od.download_callbacks[(0x1400 + index, 1)].add(self._downloaded_cob_id)
         od.download_callbacks[(0x1400 + index, 2)].add(self._downloaded_transmission_type)
 
-        map_array = Array(Variable(DT.UNSIGNED32, "rw"), length=8, mutable=True)
+        map_var = Variable(DT.UNSIGNED32, "rw", name='Application Object')
+        map_array = Array(map_var, length=8, mutable=True, name='RPDO Mapping Parameter')
         od[0x1600 + index] = map_array
 
         od.write(0x1600 + index, 0, 0, downloaded=False)  # set number of mapped objects to 0

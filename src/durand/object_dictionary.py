@@ -76,22 +76,30 @@ class Variable:
 
 class Record:
     def __init__(self, name: str = None):
-        self._name = name
+        self.name = name
         self._variables: Dict[int, Variable] = dict()
 
     def __getitem__(self, subindex: int):
         if subindex == 0:
-            return Variable(DatatypeEnum.UNSIGNED8, 'const', value=max(self._variables))
+            return Variable(DatatypeEnum.UNSIGNED8, 'const', value=max(self._variables), name='Highest Sub-Index Supported')
 
         return self._variables[subindex]
 
     def __setitem__(self, subindex: int, variable: Variable):
         self._variables[subindex] = variable
 
+    def __iter__(self):
+        variables = [(0, self[0])]
+        variables += list(sorted(self._variables.items(), key=lambda n: n[0]))
+        return variables.__iter__()
+
+    def __len__(self):
+        return len(self._variables) + 1
+
 
 class Array:
     def __init__(self, variable: Variable, length: int, mutable: bool = False, name: str = None):
-        self._name = name
+        self.name = name
         self._variable = variable
         self._mutable = mutable
         self.length = length
@@ -99,12 +107,20 @@ class Array:
     def __getitem__(self, subindex: int):
         if subindex == 0:
             access = "rw" if self._mutable else "const"
-            return Variable(DatatypeEnum.UNSIGNED8, access, value=self.length)
+            return Variable(DatatypeEnum.UNSIGNED8, access, value=self.length, name='Highest Sub-Index Supported')
 
         if subindex > self.length:
             raise KeyError(f'Subindex {subindex} not available in array')
 
         return self._variable
+
+    def __iter__(self):
+        variables = [(0, self[0])]
+        variables += [(i + 1, self._variable) for i in range(self.length)]
+        return variables.__iter__()
+
+    def __len__(self):
+        return self.length + 1
 
 
 TObject = Union[Variable, Record, Array]

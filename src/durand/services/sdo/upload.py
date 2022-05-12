@@ -17,6 +17,9 @@ class BaseUploadHandler:
         :returns: next slice of data
         """
 
+    def on_finish(self):
+        """on_finish is called when the transfer is successfully completed"""
+
     def on_abort(self) -> None:
         """on_abort is called when the transfer was aborted"""
 
@@ -48,6 +51,7 @@ class HandlerStream:
         self._buffer.clear()
 
     def release(self):
+        self._handler.on_finish()
         self._buffer.clear()
 
 
@@ -99,7 +103,8 @@ class UploadManager:
             self._abort()
 
     def _abort(self):
-        self._stream.abort()
+        if self._stream:
+            self._stream.abort()
         self._stream = None
         self._state = TransferState.NONE
 
@@ -199,6 +204,7 @@ class UploadManager:
         no_data_left = not self._stream.peek(1)
 
         if no_data_left:
+            self._state = TransferState.NONE
             self._stream.release()
             self._stream = None
 

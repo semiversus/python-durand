@@ -5,6 +5,7 @@ from .adapters import AdapterABC
 from .object_dictionary import ObjectDictionary
 from .services.sdo import SDOServer
 from .services.pdo import TPDO, RPDO
+from .eds import EDS
 from .services.nmt import NMTService, StateEnum
 from .services.lss import LSS
 from .services.sync import Sync
@@ -40,6 +41,7 @@ class Node:
         self.node_id = node_id
         od = ObjectDictionary() if od is None else od
         self.object_dictionary = od
+        self.eds = EDS(self)
 
         self.nmt = NMTService(self)
         self.sync = Sync(self)
@@ -60,21 +62,26 @@ class Node:
         self.lss = LSS(self)
         self.emcy = EMCY(self)
 
-        od[0x1000] = Variable(DT.UNSIGNED32, "ro", 0)  # device type
+        od[0x1000] = Variable(DT.UNSIGNED32, "ro", 0, name='Device Type')
 
-        od[0x1008] = Variable(DT.VISIBLE_STRING, "ro", b"")  # manufacturer device name
-        od[0x1009] = Variable(DT.VISIBLE_STRING, "ro", b"")  # manufacturer hardware version
-        od[0x100A] = Variable(DT.VISIBLE_STRING, "ro", b"")  # manufacturer software version
+        od[0x1008] = Variable(DT.VISIBLE_STRING, "ro", b"", name='Manufacturer Device Name')
+        od[0x1009] = Variable(DT.VISIBLE_STRING, "ro", b"", name='Manufacturer Hardware Version')
+        od[0x100A] = Variable(DT.VISIBLE_STRING, "ro", b"", name='Manufacturer Software Version')
 
         # Identity object
-        identity_record = Record()
-        identity_record[1] = Variable(DT.UNSIGNED32, "ro", 0)  # vendor id
-        identity_record[2] = Variable(DT.UNSIGNED32, "ro", 0)  # product code
-        identity_record[3] = Variable(DT.UNSIGNED32, "ro", 0)  # revision number
-        identity_record[4] = Variable(DT.UNSIGNED32, "ro", 0)  # serial number
+        identity_record = Record(name='Identity Object')
+        identity_record[1] = Variable(DT.UNSIGNED32, "ro", 0, name='Vendor-ID')
+        identity_record[2] = Variable(DT.UNSIGNED32, "ro", 0, name='Product Code')
+        identity_record[3] = Variable(DT.UNSIGNED32, "ro", 0, name='Revision Number')
+        identity_record[4] = Variable(DT.UNSIGNED32, "ro", 0, name='Serial Number')
 
         od[0x1018] = identity_record
         self.nmt.set_state(StateEnum.PRE_OPERATIONAL)
+
+        # EDS provider
+        od[0x1021] = Variable(DT.DOMAIN, "ro", name='Store EDS')
+        od[0x1022] = Variable(DT.UNSIGNED16, "ro", value = 0, name='Store Format')
+        od.set_read_callback(0x1021, 0, lambda: self.eds.content.encode())
 
 
 MinimalNodeCapabilities = NodeCapabilities(sdo_servers=1, rpdos=4, tpdos=4)

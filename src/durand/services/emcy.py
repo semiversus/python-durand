@@ -19,9 +19,9 @@ class EMCY:
 
         self._cob_id = 0x80 + node.node_id
 
-        node.object_dictionary[0x1001] = Variable(DT.UNSIGNED8, "ro", 0)  # error register
-        node.object_dictionary[0x1014] = Variable(DT.UNSIGNED32, "rw", self._cob_id)
-        node.object_dictionary[0x1015] = Variable(DT.UNSIGNED16, "rw", self._inhibit_time)
+        node.object_dictionary[0x1001] = Variable(DT.UNSIGNED8, "ro", 0, name='Error Register')
+        node.object_dictionary[0x1014] = Variable(DT.UNSIGNED32, "rw", self._cob_id, name='COB-ID EMCY')
+        node.object_dictionary[0x1015] = Variable(DT.UNSIGNED16, "rw", self._inhibit_time, name='Inhibit Time EMCY')
 
         node.object_dictionary.download_callbacks[(0x1014, 0)].add(self._downloaded_cob_id)
         node.object_dictionary.update_callbacks[(0x1015, 0)].add(self._update_inhibit_time)

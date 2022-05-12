@@ -16,7 +16,7 @@ class Sync:
 
         self.callbacks = CallbackHandler()
 
-        node.object_dictionary[0x1005] = Variable(DT.UNSIGNED32, "rw", self._cob_id)
+        node.object_dictionary[0x1005] = Variable(DT.UNSIGNED32, "rw", self._cob_id, name='COB-ID SYNC')
         node.object_dictionary.update_callbacks[(0x1005, 0)].add(self._update_cob_id)
 
         node.adapter.add_subscription(cob_id=self._cob_id, callback=self._receive_sync)

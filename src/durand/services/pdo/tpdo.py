@@ -92,17 +92,18 @@ class TPDO:
 
         od = self._node.object_dictionary
 
-        param_record = Record()
-        param_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id)  # used cob id
-        param_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type)
-        param_record[3] = Variable(DT.UNSIGNED16, "rw", 0)
+        param_record = Record(name='TPDO Communication Parameter')
+        param_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id, name='COB-ID used by TPDO')
+        param_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type, name='Transmission Type')
+        param_record[3] = Variable(DT.UNSIGNED16, "rw", 0, name='Inhibit Time')
         od[0x1800 + index] = param_record
 
         od.download_callbacks[(0x1800 + index, 1)].add(self._downloaded_cob_id)
         od.download_callbacks[(0x1800 + index, 2)].add(self._downloaded_transmission_type)
         od.update_callbacks[(0x1800 + index, 3)].add(self._update_inhibit_time)
 
-        map_array = Array(Variable(DT.UNSIGNED32, "rw"), length=8, mutable=True)
+        map_var = Variable(DT.UNSIGNED32, "rw", name='Application Object')
+        map_array = Array(map_var, length=8, mutable=True, name='TPDO Mapping Parameter')
         od[0x1A00 + index] = map_array
 
         od.write(0x1A00 + index, 0, 0, downloaded=False)  # set number of mapped objects to 0
