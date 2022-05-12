@@ -22,10 +22,15 @@ class CANAdapter(AdapterABC):
     def add_subscription(self, cob_id: int, callback):
         with self.lock:
             self.subscriptions[cob_id] = callback
+            self._update_filters()
 
     def remove_subscription(self, cob_id: int):
         with self.lock:
             self.subscriptions.pop(cob_id)
+            self._update_filters()
+
+    def _update_filters(self):
+        self._bus.set_filters([{'can_id': i, 'can_mask': 0x7FF} for i in self.subscriptions])
 
     def send(self, cob_id: int, msg: bytes):
         msg = can.Message(arbitration_id=cob_id, data=msg, is_extended_id=False)
