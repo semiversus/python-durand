@@ -33,7 +33,7 @@ setup(
     python_requires='>=3.7',
     license='MIT license',
     keywords='canopen can node ds301',
-    packages=find_packages('src', include=['durand.*']),
+    packages=find_packages('src'),
     package_dir = {'': 'src'},
     zip_safe=False,
 )
