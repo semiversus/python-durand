@@ -81,7 +81,8 @@ class Record:
 
     def __getitem__(self, subindex: int):
         if subindex == 0:
-            return Variable(DatatypeEnum.UNSIGNED8, 'const', value=max(self._variables), name='Highest Sub-Index Supported')
+            value = max(self._variables) if self._variables else 0
+            return Variable(DatatypeEnum.UNSIGNED8, 'const', value=value, name='Highest Sub-Index Supported')
 
         return self._variables[subindex]
 
