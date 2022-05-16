@@ -6,9 +6,9 @@ from durand import MinimalNode, Variable
 from durand.adapters.can import CANAdapter
 
 
-adapter = CANAdapter(interface='socketcan', channel='vcan0', loop=asyncio.get_event_loop())
+adapter = CANAdapter(interface='socketcan', channel='can0', loop=asyncio.get_event_loop())
 
-node = MinimalNode(adapter, 0x0E)
+node = MinimalNode(adapter, 0x20)
 
 state_control = Variable(DatatypeEnum.UNSIGNED8, access='rw', value=0)
 node.object_dictionary[0x2000] = state_control
@@ -42,8 +42,8 @@ class MyDownloadHandler:
         self._file.close()
 
 #define handler
-def download_callback(node, variable, size):
-    if variable.index == 0x2001:
+def download_callback(node, index, subindex, size):
+    if index == 0x2001:
         return MyDownloadHandler()
 
     return None
