@@ -1,4 +1,0 @@
-name: Publish to PyPI and TestPyPI
-on: push
-
-jobs:
