@@ -13,14 +13,17 @@ def test_sdo_object_dictionary(node_id):
     n = Node(MockAdapter(), node_id)
 
     assert n.object_dictionary.lookup(0x1200, 0) == Variable(
-        DT.UNSIGNED8, "const", value=2
+        DT.UNSIGNED8, "const", value=2, name='Highest Sub-Index Supported'
     )
     assert n.object_dictionary.lookup(0x1200, 1) == Variable(
-        DT.UNSIGNED32, "ro", value=0x600 + node_id
+        DT.UNSIGNED32, "ro", value=0x600 + node_id, name='COB-ID Client->Server (rx)'
     )
     assert n.object_dictionary.lookup(0x1200, 2) == Variable(
-        DT.UNSIGNED32, "ro", value=0x580 + node_id
+        DT.UNSIGNED32, "ro", value=0x580 + node_id, name='COB-ID Server -> Client (tx)'
     )
+
+    with pytest.raises(KeyError):
+        n.object_dictionary.lookup(0x1200, 3)
 
 
 @pytest.mark.parametrize("node_id", [0x01, 0x7F])
@@ -29,15 +32,15 @@ def test_sdo_additional_servers(node_id, index):
     n = Node(MockAdapter(), node_id)
 
     assert n.object_dictionary.lookup(0x1200 + index, 0) == Variable(
-        DT.UNSIGNED8, "const", value=3
+        DT.UNSIGNED8, "const", value=3, name='Highest Sub-Index Supported'
     )
     assert n.object_dictionary.lookup(0x1200 + index, 1) == Variable(
-        DT.UNSIGNED32, "rw", value=0x8000_0000
+        DT.UNSIGNED32, "rw", value=0x8000_0000, name='COB-ID Client->Server (rx)'
     )
     assert n.object_dictionary.lookup(0x1200 + index, 2) == Variable(
-        DT.UNSIGNED32, "rw", value=0x8000_0000
+        DT.UNSIGNED32, "rw", value=0x8000_0000, name='COB-ID Server -> Client (tx)'
     )
-    assert n.object_dictionary.lookup(0x1200 + index, 3) == Variable(DT.UNSIGNED8, "rw")
+    assert n.object_dictionary.lookup(0x1200 + index, 3) == Variable(DT.UNSIGNED8, "rw", name='Node-ID of the SDO Client')
 
 
 @pytest.mark.parametrize("sdo_server", [1, 127])

@@ -16,6 +16,7 @@ class EMCY:
 
         self._timer_handle = None
         self._inhibit_time = 0
+        self._deferred_emcy = None
 
         self._cob_id = 0x80 + node.node_id
 
@@ -75,6 +76,11 @@ class EMCY:
     def _time_up(self):
         self._timer_handle = None
 
+        if self._deferred_emcy:
+            self._send(*self._deferred_emcy)
+
+        self._deferred_emcy = None
+
     def set(self, error_code: int, error_register: int, data: bytes = b''):
         self._node.object_dictionary.write(0x1001, 0, error_register, downloaded=False)
 
@@ -82,8 +88,12 @@ class EMCY:
             return
 
         if self._timer_handle is not None:
+            self._deferred_emcy = (error_code, error_register, data)
             return
 
+        self._send(error_code, error_register, data)
+
+    def _send(self, error_code: int, error_register: int, data: bytes = b''):
         if self._inhibit_time:
             self._timer_handle = get_scheduler().add(self._inhibit_time, self._time_up)
 
