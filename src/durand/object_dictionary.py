@@ -165,7 +165,7 @@ class ObjectDictionary:
     def __getitem__(self, index: int):
         try:
             return self._variables[index]
-        except IndexError:
+        except KeyError:
             return self._objects[index]
 
     def __setitem__(self, index: int, object: TObject):
