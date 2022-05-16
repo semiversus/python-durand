@@ -20,12 +20,22 @@ class EMCY:
 
         self._cob_id = 0x80 + node.node_id
 
-        node.object_dictionary[0x1001] = Variable(DT.UNSIGNED8, "ro", 0, name='Error Register')
-        node.object_dictionary[0x1014] = Variable(DT.UNSIGNED32, "rw", self._cob_id, name='COB-ID EMCY')
-        node.object_dictionary[0x1015] = Variable(DT.UNSIGNED16, "rw", self._inhibit_time, name='Inhibit Time EMCY')
+        node.object_dictionary[0x1001] = Variable(
+            DT.UNSIGNED8, "ro", 0, name="Error Register"
+        )
+        node.object_dictionary[0x1014] = Variable(
+            DT.UNSIGNED32, "rw", self._cob_id, name="COB-ID EMCY"
+        )
+        node.object_dictionary[0x1015] = Variable(
+            DT.UNSIGNED16, "rw", self._inhibit_time, name="Inhibit Time EMCY"
+        )
 
-        node.object_dictionary.download_callbacks[(0x1014, 0)].add(self._downloaded_cob_id)
-        node.object_dictionary.update_callbacks[(0x1015, 0)].add(self._update_inhibit_time)
+        node.object_dictionary.download_callbacks[(0x1014, 0)].add(
+            self._downloaded_cob_id
+        )
+        node.object_dictionary.update_callbacks[(0x1015, 0)].add(
+            self._update_inhibit_time
+        )
 
         node.nmt.state_callbacks.add(self._update_nmt_state)
 
@@ -35,7 +45,10 @@ class EMCY:
     def _update_nmt_state(self, state: StateEnum):
         if state == StateEnum.STOPPED:
             self._cob_id = None
-        elif state in (StateEnum.PRE_OPERATIONAL, StateEnum.OPERATIONAL) and self._cob_id is None:
+        elif (
+            state in (StateEnum.PRE_OPERATIONAL, StateEnum.OPERATIONAL)
+            and self._cob_id is None
+        ):
             self._cob_id = 0x80 + self._node.node_id
 
     @property
@@ -81,7 +94,7 @@ class EMCY:
 
         self._deferred_emcy = None
 
-    def set(self, error_code: int, error_register: int, data: bytes = b''):
+    def set(self, error_code: int, error_register: int, data: bytes = b""):
         self._node.object_dictionary.write(0x1001, 0, error_register, downloaded=False)
 
         if not self.enable:
@@ -93,9 +106,11 @@ class EMCY:
 
         self._send(error_code, error_register, data)
 
-    def _send(self, error_code: int, error_register: int, data: bytes = b''):
+    def _send(self, error_code: int, error_register: int, data: bytes = b""):
         if self._inhibit_time:
             self._timer_handle = get_scheduler().add(self._inhibit_time, self._time_up)
 
-        msg = struct.pack('<HB', error_code, error_register) + data + bytes(5 - len(data))
+        msg = (
+            struct.pack("<HB", error_code, error_register) + data + bytes(5 - len(data))
+        )
         self._node.adapter.send(self._cob_id, msg)

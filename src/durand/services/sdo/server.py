@@ -51,18 +51,26 @@ class SDOServer:
 
         od = self._node.object_dictionary
 
-        server_record = Record(name='SDO Server Parameter')
+        server_record = Record(name="SDO Server Parameter")
         server_record[1] = Variable(
-            DT.UNSIGNED32, "rw" if index else "ro", self._cob_rx, name='COB-ID Client->Server (rx)'
+            DT.UNSIGNED32,
+            "rw" if index else "ro",
+            self._cob_rx,
+            name="COB-ID Client->Server (rx)",
         )
         server_record[2] = Variable(
-            DT.UNSIGNED32, "rw" if index else "ro", self._cob_tx, name='COB-ID Server -> Client (tx)'
+            DT.UNSIGNED32,
+            "rw" if index else "ro",
+            self._cob_tx,
+            name="COB-ID Server -> Client (tx)",
         )
 
         if index:
             od.update_callbacks[(0x1200 + index, 1)].add(self._update_cob_rx)
             od.update_callbacks[(0x1200 + index, 2)].add(self._update_cob_tx)
-            server_record[3] = Variable(DT.UNSIGNED8, "rw", name='Node-ID of the SDO Client')
+            server_record[3] = Variable(
+                DT.UNSIGNED8, "rw", name="Node-ID of the SDO Client"
+            )
 
             self._node.nmt.state_callbacks.add(self._update_subscription)
         else:

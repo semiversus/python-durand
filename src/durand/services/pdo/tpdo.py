@@ -44,11 +44,12 @@ class InhibitTimer:
 
 
 class SyncHandler:
-    """ SyncHandler is handling transmission types using the SYNC protocol
+    """SyncHandler is handling transmission types using the SYNC protocol
     mode 0: divider is 0 and _counter will be used to detect a changed datafield
     mode 1-240: every nth sync a transmit is executed
     """
-    def __init__(self, tpdo: 'TPDO', divider: int):
+
+    def __init__(self, tpdo: "TPDO", divider: int):
         tpdo._node.sync.callbacks.add(self._on_sync)
         self._tpdo = tpdo
         self._counter = 0
@@ -92,21 +93,31 @@ class TPDO:
 
         od = self._node.object_dictionary
 
-        param_record = Record(name='TPDO Communication Parameter')
-        param_record[1] = Variable(DT.UNSIGNED32, "rw", self._cob_id, name='COB-ID used by TPDO')
-        param_record[2] = Variable(DT.UNSIGNED8, "rw", self._transmission_type, name='Transmission Type')
-        param_record[3] = Variable(DT.UNSIGNED16, "rw", 0, name='Inhibit Time')
+        param_record = Record(name="TPDO Communication Parameter")
+        param_record[1] = Variable(
+            DT.UNSIGNED32, "rw", self._cob_id, name="COB-ID used by TPDO"
+        )
+        param_record[2] = Variable(
+            DT.UNSIGNED8, "rw", self._transmission_type, name="Transmission Type"
+        )
+        param_record[3] = Variable(DT.UNSIGNED16, "rw", 0, name="Inhibit Time")
         od[0x1800 + index] = param_record
 
         od.download_callbacks[(0x1800 + index, 1)].add(self._downloaded_cob_id)
-        od.download_callbacks[(0x1800 + index, 2)].add(self._downloaded_transmission_type)
+        od.download_callbacks[(0x1800 + index, 2)].add(
+            self._downloaded_transmission_type
+        )
         od.update_callbacks[(0x1800 + index, 3)].add(self._update_inhibit_time)
 
-        map_var = Variable(DT.UNSIGNED32, "rw", name='Application Object')
-        map_array = Array(map_var, length=8, mutable=True, name='TPDO Mapping Parameter')
+        map_var = Variable(DT.UNSIGNED32, "rw", name="Application Object")
+        map_array = Array(
+            map_var, length=8, mutable=True, name="TPDO Mapping Parameter"
+        )
         od[0x1A00 + index] = map_array
 
-        od.write(0x1A00 + index, 0, 0, downloaded=False)  # set number of mapped objects to 0
+        od.write(
+            0x1A00 + index, 0, 0, downloaded=False
+        )  # set number of mapped objects to 0
         od.download_callbacks[(0x1A00 + index, 0)].add(self._downloaded_map_length)
 
         node.nmt.state_callbacks.add(self._update_nmt_state)
@@ -114,7 +125,12 @@ class TPDO:
     def _update_nmt_state(self, state: StateEnum):
         if state == StateEnum.OPERATIONAL:
             if self._index < 4:
-                self._cob_id = (self._cob_id & 0xE000_0000) + 0x180 + (self._index * 0x100) + self._node.node_id
+                self._cob_id = (
+                    (self._cob_id & 0xE000_0000)
+                    + 0x180
+                    + (self._index * 0x100)
+                    + self._node.node_id
+                )
 
             self._activate_mapping()
         else:
@@ -168,7 +184,9 @@ class TPDO:
             self._cob_id |= 1 << 31
             self._deactivate_mapping()
 
-        self._node.object_dictionary.write(0x1800 + self._index, 1, self._cob_id, downloaded=False)
+        self._node.object_dictionary.write(
+            0x1800 + self._index, 1, self._cob_id, downloaded=False
+        )
 
     @property
     def inhibit_time(self):
@@ -176,7 +194,9 @@ class TPDO:
 
     @inhibit_time.setter
     def inhibit_time(self, value: float):
-        return self._node.object_dictionary.write(0x1800 + self._index, 3, value * 10_000, downloaded=False)
+        return self._node.object_dictionary.write(
+            0x1800 + self._index, 3, value * 10_000, downloaded=False
+        )
 
     def _downloaded_map_length(self, length):
         multiplexors = list()
@@ -195,12 +215,16 @@ class TPDO:
     @mapping.setter
     def mapping(self, multiplexors: TMultiplexor):
         self._map(multiplexors)
-        self._node.object_dictionary.write(0x1A00 + self._index, 0, len(multiplexors), downloaded=False)
+        self._node.object_dictionary.write(
+            0x1A00 + self._index, 0, len(multiplexors), downloaded=False
+        )
         for _entry, multiplexor in enumerate(multiplexors):
             index, subindex = multiplexor
             variable = self._node.object_dictionary.lookup(index, subindex)
             value = (index << 16) + (subindex << 8) + variable.size
-            self._node.object_dictionary.write(0x1A00 + self._index, _entry + 1, value, downloaded=False)
+            self._node.object_dictionary.write(
+                0x1A00 + self._index, _entry + 1, value, downloaded=False
+            )
 
     def _map(self, multiplexors: TMultiplexor):
         self._deactivate_mapping()

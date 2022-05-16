@@ -4,5 +4,13 @@ from durand.object_dictionary import Variable, Record, Array
 from durand.datatypes import DatatypeEnum
 
 
-__all__ = ["MinimalNode", "Node", "Variable", "Record", "Array", "DatatypeEnum",
-           "get_scheduler", "set_scheduler"]
+__all__ = [
+    "MinimalNode",
+    "Node",
+    "Variable",
+    "Record",
+    "Array",
+    "DatatypeEnum",
+    "get_scheduler",
+    "set_scheduler",
+]

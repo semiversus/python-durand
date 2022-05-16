@@ -82,7 +82,12 @@ class Record:
     def __getitem__(self, subindex: int):
         if subindex == 0:
             value = max(self._variables) if self._variables else 0
-            return Variable(DatatypeEnum.UNSIGNED8, 'const', value=value, name='Highest Sub-Index Supported')
+            return Variable(
+                DatatypeEnum.UNSIGNED8,
+                "const",
+                value=value,
+                name="Highest Sub-Index Supported",
+            )
 
         return self._variables[subindex]
 
@@ -99,7 +104,9 @@ class Record:
 
 
 class Array:
-    def __init__(self, variable: Variable, length: int, mutable: bool = False, name: str = None):
+    def __init__(
+        self, variable: Variable, length: int, mutable: bool = False, name: str = None
+    ):
         self.name = name
         self._variable = variable
         self._mutable = mutable
@@ -108,10 +115,15 @@ class Array:
     def __getitem__(self, subindex: int):
         if subindex == 0:
             access = "rw" if self._mutable else "const"
-            return Variable(DatatypeEnum.UNSIGNED8, access, value=self.length, name='Highest Sub-Index Supported')
+            return Variable(
+                DatatypeEnum.UNSIGNED8,
+                access,
+                value=self.length,
+                name="Highest Sub-Index Supported",
+            )
 
         if subindex > self.length:
-            raise KeyError(f'Subindex {subindex} not available in array')
+            raise KeyError(f"Subindex {subindex} not available in array")
 
         return self._variable
 

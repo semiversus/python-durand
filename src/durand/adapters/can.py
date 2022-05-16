@@ -30,7 +30,9 @@ class CANAdapter(AdapterABC):
             self._update_filters()
 
     def _update_filters(self):
-        self._bus.set_filters([{'can_id': i, 'can_mask': 0x7FF} for i in self.subscriptions])
+        self._bus.set_filters(
+            [{"can_id": i, "can_mask": 0x7FF} for i in self.subscriptions]
+        )
 
     def send(self, cob_id: int, msg: bytes):
         msg = can.Message(arbitration_id=cob_id, data=msg, is_extended_id=False)

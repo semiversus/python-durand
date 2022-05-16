@@ -23,7 +23,7 @@ class CallbackHandler:
 
     def remove(self, callback):
         self._callbacks.remove(callback)
-    
+
     def __contains__(self, callback):
         return callback in self._callbacks
 

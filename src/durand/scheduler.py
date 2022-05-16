@@ -94,7 +94,11 @@ class VirtualScheduler(AbstractScheduler):
             if earliest_timestamp > start_time + duration:
                 break
 
-            ids = tuple(id for id, timestamp in self._timestamp_dict.items() if timestamp == earliest_timestamp)
+            ids = tuple(
+                id
+                for id, timestamp in self._timestamp_dict.items()
+                if timestamp == earliest_timestamp
+            )
             for id in ids:
                 entry = self._entry_dict[id]
                 entry.callback(*entry.args, **entry.kwargs)
