@@ -102,6 +102,9 @@ class Record:
     def __len__(self):
         return len(self._variables) + 1
 
+    def __contains__(self, subindex: int):
+        return subindex == 0 or subindex in self._variables
+
 
 class Array:
     def __init__(
@@ -134,6 +137,9 @@ class Array:
 
     def __len__(self):
         return self.length + 1
+
+    def __contains__(self, subindex: int):
+        return subindex <= self.length
 
 
 TObject = Union[Variable, Record, Array]
@@ -223,3 +229,9 @@ class ObjectDictionary:
     def __iter__(self):
         objects = itertools.chain(self._objects.items(), self._variables.items())
         return iter(sorted(objects, key=lambda n: n[0]))
+
+    def __len__(self):
+        return len(self._objects) + len(self._variables)
+
+    def __contains__(self, index: int):
+        return index in self._objects or index in self._variables
