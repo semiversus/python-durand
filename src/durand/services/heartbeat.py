@@ -14,7 +14,7 @@ class HeartbeatProducer:
         self._node = node
 
         node.object_dictionary[0x1017] = Variable(
-            DT.UNSIGNED16, "rw", name="Producer Heratbeat Time"
+            DT.UNSIGNED16, "rw", name="Producer Heartbeat Time"
         )
         node.object_dictionary.update_callbacks[(0x1017, 0)].add(self._update_interval)
 
