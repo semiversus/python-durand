@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Tuple, TypeVar, Dict, Any
 import functools
 import threading
+from sched import scheduler
 
 
 TEntry = TypeVar("TEntry")  # type of scheduler entry
@@ -25,11 +26,8 @@ class AbstractScheduler(metaclass=ABCMeta):
     def cancel(self, entry: TEntry):
         """Cancel a scheduled callback
 
-        :param entry: the scheduler entry to be canceld
+        :param entry: the scheduler entry to be canceled
         """
-
-    def start(self):
-        """Start scheduling"""
 
     @abstractproperty
     def lock(self):
@@ -51,6 +49,34 @@ class AsyncScheduler(AbstractScheduler):
 
     def cancel(self, entry: asyncio.TimerHandle):
         entry.cancel()
+
+    @property
+    def lock(self):
+        return self._lock
+
+
+class SyncScheduler(AbstractScheduler):
+    def __init__(self, lock: threading.Lock=None):
+        if lock is None:
+            lock = threading.Lock()
+        self._lock = lock
+        self._sched = scheduler()
+        self._wake_up = threading.Event()
+
+    def add(self, delay: float, callback, args=(), kwargs=None) -> asyncio.TimerHandle:
+        if kwargs == None:
+            kwargs = {}
+        self._wake_up.set()
+        return self._sched.enter(delay, 0, callback, args, kwargs)
+
+    def cancel(self, entry):
+        self._sched.cancel(entry)
+
+    def run(self):
+        while True:
+            self._sched.run()
+            self._wake_up.wait()
+            self._wake_up.clear()
 
     @property
     def lock(self):
