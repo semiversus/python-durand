@@ -32,6 +32,7 @@ def is_float(datatype: DatatypeEnum):
 
 
 struct_dict = {
+    DatatypeEnum.BOOLEAN: Struct("?"),
     DatatypeEnum.UNSIGNED8: Struct("B"),
     DatatypeEnum.INTEGER8: Struct("b"),
     DatatypeEnum.UNSIGNED16: Struct("<H"),
