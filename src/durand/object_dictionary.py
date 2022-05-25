@@ -19,7 +19,7 @@ class Variable:
     datatype: DatatypeEnum
     access: str
     value: Any = None
-    factor: float = 1
+    factor: float = None
     minimum: float = None
     maximum: float = None
     name: str = None
@@ -55,7 +55,9 @@ class Variable:
         if not is_numeric(self.datatype):
             return bytes(value)
 
-        value = value / self.factor
+        if self.factor is not None:
+            value = value / self.factor
+
         dt_struct = struct_dict[self.datatype]
 
         if not is_float(self.datatype):
@@ -69,7 +71,8 @@ class Variable:
 
         dt_struct = struct_dict[self.datatype]
         value = dt_struct.unpack(data)[0]
-        value *= self.factor
+        if self.factor is not None:
+            value *= self.factor
 
         return value
 
