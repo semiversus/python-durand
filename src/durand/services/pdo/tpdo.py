@@ -109,9 +109,9 @@ class TPDO:
         )
         od.update_callbacks[(0x1800 + index, 3)].add(self._update_inhibit_time)
 
-        map_var = Variable(DT.UNSIGNED32, "rw", name="Application Object")
+        map_var = Variable(DT.UNSIGNED32, "rw", name="Mapped Object")
         map_array = Array(
-            map_var, length=8, mutable=True, name="TPDO Mapping Parameter"
+            map_var, length=8, mutable=True, name=f"TPDO {index + 1} Mapping Parameter"
         )
         od[0x1A00 + index] = map_array
 

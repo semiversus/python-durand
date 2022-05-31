@@ -42,9 +42,9 @@ class RPDO:
             self._downloaded_transmission_type
         )
 
-        map_var = Variable(DT.UNSIGNED32, "rw", name="Application Object")
+        map_var = Variable(DT.UNSIGNED32, "rw", name="Mapped Object")
         map_array = Array(
-            map_var, length=8, mutable=True, name="RPDO Mapping Parameter"
+            map_var, length=8, mutable=True, name=f"RPDO {index + 1} Mapping Parameter"
         )
         od[0x1600 + index] = map_array
 
