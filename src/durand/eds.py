@@ -1,5 +1,5 @@
 from dataclasses import dataclass, fields
-from re import match
+from re import match, sub
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -97,76 +97,6 @@ class DeviceInfo:
         return "[DeviceInfo]\n\n"
 
 
-def extract_objects(d: dict, indices: list) -> dict:
-    extracted_dict = {index: obj for index, obj in d.items() if index in indices}
-    for index in indices:
-        d.pop(index, None)
-
-    return extracted_dict
-
-
-def describe_variable(index: int, subindex: int, variable: Variable) -> str:
-    name = f"{index:04X}" + ("" if subindex is None else f"sub{subindex}")
-    content = f"[{name}]\n"
-
-    if variable.name:
-        content += f"ParameterName={variable.name}\n"
-    else:
-        content += f"ParameterName=Variable{name}\n"
-
-    content += "ObjectType=0x7\n"
-    content += f"DataType=0x{variable.datatype}\n"
-    content += f"AccessType={variable.access}\n"
-
-    if variable.value is not None:
-        content += f"DefaultValue={variable.value}\n"
-
-    if variable.minimum is not None:
-        content += f"LowLimit={variable.minimum}\n"
-
-    if variable.maximum is not None:
-        content += f"HighLimit={variable.maximum}\n"
-
-    content += "PDOMapping=1\n\n"
-
-    return content
-
-
-def describe_object(index: int, object) -> str:
-    if isinstance(object, Variable):
-        return describe_variable(index, None, object)
-
-    content = f"[{index:04X}]\nSubNumber={len(object)}\n"
-
-    if object.name:
-        content += f"ParameterName={object.name}\n"
-    else:
-        content += f"ParameterName=Object{index:04X}\n"
-
-    content += (
-        "ObjectType=0x8\n\n" if isinstance(object, Record) else "ObjectType=0x9\n\n"
-    )
-
-    for subindex, variable in object:
-        content += describe_variable(index, subindex, variable)
-
-    return content
-
-
-def describe_section(name: str, objects: dict):
-    content = f"[{name}]\nSupportedObjects={len(objects)}\n"
-
-    for obj_nr, index in enumerate(objects):
-        content += f"{obj_nr + 1}=0x{index:04X}\n"
-
-    content += "\n"
-
-    for index, object in objects.items():
-        content += describe_object(index, object)
-
-    return content
-
-
 class EDS:
     def __init__(self, node: "Node"):
         self._node = node
@@ -177,9 +107,7 @@ class EDS:
 
     @property
     def content(self):
-        content = self.file_info.content
-
-        content += self.device_info.content
+        content = ''
 
         if self.comments:
             lines = self.comments.strip().splitlines()
@@ -188,18 +116,95 @@ class EDS:
                 content += f"Line{index + 1}={line:s}\n"
             content += "\n"
 
+        content += self.file_info.content
+        content += self.device_info.content
+
         objects = dict(self._node.object_dictionary)
 
-        mandatory_objects = extract_objects(objects, (0x1000, 0x1001, 0x1018))
-        content += describe_section("MandatoryObjects", mandatory_objects)
+        mandatory_objects = self.extract_objects(objects, (0x1000, 0x1001, 0x1018))
+        content += self.describe_section("MandatoryObjects", mandatory_objects)
 
         optional_indicies = [
             index for index in objects if index < 0x2000 or index >= 0x6000
         ]
-        optional_objects = extract_objects(objects, optional_indicies)
-        content += describe_section("OptionalObjects", optional_objects)
+        optional_objects = self.extract_objects(objects, optional_indicies)
+        content += self.describe_section("OptionalObjects", optional_objects)
 
-        content += describe_section("ManufacturerObjects", objects)
+        content += self.describe_section("ManufacturerObjects", objects)
+
+        return content
+
+    def extract_objects(self, d: dict, indices: list) -> dict:
+        extracted_dict = {index: obj for index, obj in d.items() if index in indices}
+        for index in indices:
+            d.pop(index, None)
+
+        return extracted_dict
+
+    def describe_variable(self, index: int, subindex: int, variable: Variable) -> str:
+        name = f"{index:04X}" + ("" if subindex is None else f"sub{subindex}")
+        content = f"[{name}]\n"
+
+        if variable.name:
+            content += f"ParameterName={variable.name}\n"
+        else:
+            content += f"ParameterName=Variable{name}\n"
+
+        content += "ObjectType=0x7\n"
+        content += f"DataType=0x{variable.datatype}\n"
+        content += f"AccessType={variable.access}\n"
+
+        if self._node.object_dictionary.has_value(index, subindex):
+            value = self._node.object_dictionary.read(index, subindex)
+        else:
+            value = variable.value
+
+        if value is not None:
+            if variable.datatype == DatatypeEnum.VISIBLE_STRING:
+                value = value.decode()
+
+            content += f"DefaultValue={value}\n"
+
+        if variable.minimum is not None:
+            content += f"LowLimit={variable.minimum}\n"
+
+        if variable.maximum is not None:
+            content += f"HighLimit={variable.maximum}\n"
+
+        content += f"PDOMapping={0 if index < 0x2000 else 1}\n\n"
+
+        return content
+
+    def describe_object(self, index: int, object) -> str:
+        if isinstance(object, Variable):
+            return self.describe_variable(index, None, object)
+
+        content = f"[{index:04X}]\nSubNumber={len(object)}\n"
+
+        if object.name:
+            content += f"ParameterName={object.name}\n"
+        else:
+            content += f"ParameterName=Object{index:04X}\n"
+
+        content += (
+            "ObjectType=0x8\n\n" if isinstance(object, Record) else "ObjectType=0x9\n\n"
+        )
+
+        for subindex, variable in object:
+            content += self.describe_variable(index, subindex, variable)
+
+        return content
+
+    def describe_section(self, name: str, objects: dict):
+        content = f"[{name}]\nSupportedObjects={len(objects)}\n"
+
+        for obj_nr, index in enumerate(objects):
+            content += f"{obj_nr + 1}=0x{index:04X}\n"
+
+        content += "\n"
+
+        for index, object in objects.items():
+            content += self.describe_object(index, object)
 
         return content
 

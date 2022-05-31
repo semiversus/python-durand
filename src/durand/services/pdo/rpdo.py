@@ -28,7 +28,7 @@ class RPDO:
 
         od = self._node.object_dictionary
 
-        param_record = Record(name="RPDO Communication Parameter")
+        param_record = Record(name=f"RPDO {index + 1} Communication Parameter")
         param_record[1] = Variable(
             DT.UNSIGNED32, "rw", self._cob_id, name="COB-ID used by RPDO"
         )

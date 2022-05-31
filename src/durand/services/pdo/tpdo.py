@@ -93,7 +93,7 @@ class TPDO:
 
         od = self._node.object_dictionary
 
-        param_record = Record(name="TPDO Communication Parameter")
+        param_record = Record(name=f"TPDO {index + 1} Communication Parameter")
         param_record[1] = Variable(
             DT.UNSIGNED32, "rw", self._cob_id, name="COB-ID used by TPDO"
         )

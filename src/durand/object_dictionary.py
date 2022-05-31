@@ -226,6 +226,12 @@ class ObjectDictionary:
 
             return value
 
+    def has_value(self, index: int, subindex: int = None):
+        if subindex is None:
+            subindex = 0
+
+        return (index, subindex) in self._data
+
     def set_read_callback(self, index: int, subindex: int, callback) -> None:
         self._read_callbacks[(index, subindex)] = callback
 
