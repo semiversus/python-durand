@@ -86,7 +86,7 @@ class Node:
 
         # EDS provider
         od[0x1021] = Variable(DT.DOMAIN, "ro", name="Store EDS")
-        od[0x1022] = Variable(DT.UNSIGNED16, "ro", value=0, name="Store Format")
+        od[0x1022] = Variable(DT.UNSIGNED8, "ro", value=0, name="Store Format")
         od.set_read_callback(0x1021, 0, lambda: self.eds.content.encode())
 
 

@@ -130,7 +130,7 @@ class EDS:
         self.comments = ""
 
     replace_node_id = {
-        (0x1014, 0): 0x80,  # SYNC
+        (0x1014, None): 0x80,  # EMCY
         (0x1200, 1): 0x600,  # SDO Server COB Rx
         (0x1200, 2): 0x580,  # SDO Server COB Tx
         (0x1400, 1): 0x200,  # RPDO 1
@@ -189,7 +189,7 @@ class EDS:
             content += f"ParameterName=Variable{name}\n"
 
         content += "ObjectType=0x7\n"
-        content += f"DataType=0x{variable.datatype}\n"
+        content += f"DataType=0x{variable.datatype:X}\n"
         content += f"AccessType={variable.access}\n"
 
         if self._node.object_dictionary.has_value(index, subindex):
