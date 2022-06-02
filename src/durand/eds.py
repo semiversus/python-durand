@@ -130,14 +130,22 @@ class EDS:
         self.comments = ""
 
     replace_node_id = {
-        (0x1014, 0): 0x80, (0x1200, 1): 0x600, (0x1200, 2): 0x580,  # SYNC, SDO Server
-        (0x1400, 1): 0x200, (0x1401, 1): 0x300, (0x1402, 1): 0x400, (0x1403, 1): 0x500,  # RPDOs
-        (0x1800, 1): 0x180, (0x1801, 1): 0x280, (0x1802, 1): 0x380, (0x1803, 1): 0x480,  # TPDOs
+        (0x1014, 0): 0x80,  # SYNC
+        (0x1200, 1): 0x600,  # SDO Server COB Rx
+        (0x1200, 2): 0x580,  # SDO Server COB Tx
+        (0x1400, 1): 0x200,  # RPDO 1
+        (0x1401, 1): 0x300,  # RPDO 2
+        (0x1402, 1): 0x400,  # RPDO 3
+        (0x1403, 1): 0x500,  # RPDO 4
+        (0x1800, 1): 0x180,  # TPDO 1
+        (0x1801, 1): 0x280,  # TPDO 2
+        (0x1802, 1): 0x380,  # TPDO 3
+        (0x1803, 1): 0x480,  # TPDO 4
     }
 
     @property
     def content(self):
-        content = ''
+        content = ""
 
         if self.comments:
             lines = self.comments.strip().splitlines()

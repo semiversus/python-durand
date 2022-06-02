@@ -56,7 +56,7 @@ class AsyncScheduler(AbstractScheduler):
 
 
 class SyncScheduler(AbstractScheduler):
-    def __init__(self, lock: threading.Lock=None):
+    def __init__(self, lock: threading.Lock = None):
         if lock is None:
             lock = threading.Lock()
         self._lock = lock
