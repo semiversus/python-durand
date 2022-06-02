@@ -30,7 +30,7 @@ class LSS:
         self._pending_baudrate = None
         self._change_baudrate_cb = None
 
-        node.adapter.add_subscription(cob_id=0x7E5, callback=self.handle_msg)
+        node.network.add_subscription(cob_id=0x7E5, callback=self.handle_msg)
         node.nmt.state_callbacks.add(self.on_nmt_state_update)
 
     def set_baudrate_change_callback(self, cb):
@@ -89,17 +89,17 @@ class LSS:
 
         if self._received_selective_address == self._get_own_address():
             self._state = LSSState.CONFIGURATION
-            self._node.adapter.send(0x7E4, b"\x44" + bytes(7))
+            self._node.network.send(0x7E4, b"\x44" + bytes(7))
 
         self._received_selective_address == [None] * 4
 
     def cmd_inquire_identity(self, msg: bytes):
         index = msg[0] - 0x5A
         value = self._get_own_address()[index]
-        self._node.adapter.send(0x7E4, msg[:1] + value.to_bytes(4, "little") + bytes(3))
+        self._node.network.send(0x7E4, msg[:1] + value.to_bytes(4, "little") + bytes(3))
 
     def cmd_inquire_node_id(self, msg: bytes):
-        self._node.adapter.send(
+        self._node.network.send(
             0x7E4, b"\x5e" + self._node.node_id.to_bytes(1, "little") + bytes(6)
         )
 
@@ -112,7 +112,7 @@ class LSS:
         else:
             result = 1
 
-        self._node.adapter.send(
+        self._node.network.send(
             0x7E4, b"\x11" + result.to_bytes(1, "little") + bytes(6)
         )
 
@@ -125,11 +125,11 @@ class LSS:
             or index not in valid_table_entries
             or self._change_baudrate_cb is None
         ):
-            self._node.adapter.send(0x7E4, b"\x13\x01" + bytes(6))
+            self._node.network.send(0x7E4, b"\x13\x01" + bytes(6))
             return
 
         self._pending_baudrate = index
-        self._node.adapter.send(0x7E4, b"\x13\x00" + bytes(6))
+        self._node.network.send(0x7E4, b"\x13\x00" + bytes(6))
 
     def cmd_activate_bit_timing(self, msg: bytes):
         delay = int.from_bytes(msg[1:3], "little") / 1000  # [seconds]
@@ -144,7 +144,7 @@ class LSS:
 
     def cmd_store_configuration(self, msg: bytes):
         # store configuration is not supported
-        self._node.adapter.send(0x7E4, b"\x17\x01" + bytes(6))
+        self._node.network.send(0x7E4, b"\x17\x01" + bytes(6))
 
     def cmd_identify_remote_slaves(self, msg: bytes):
         index = msg[0] - 0x46
@@ -165,13 +165,13 @@ class LSS:
             and self._remote_slave_address[4] <= serial <= self._remote_slave_address[5]
         ):
 
-            self._node.adapter.send(0x7E4, b"\x47" + bytes(7))
+            self._node.network.send(0x7E4, b"\x47" + bytes(7))
 
         self._remote_slave_address = [None] * 6
 
     def cmd_identify_nonconfigured_remote_slaves(self, msg: bytes):
         if self._node.node_id == 0xFF:
-            self._node.adapter.send(0x7E4, b"\x50" + bytes(7))
+            self._node.network.send(0x7E4, b"\x50" + bytes(7))
 
     def cmd_fastscan(self, msg: bytes):
         if self._node.node_id != 0xFF:
@@ -181,7 +181,7 @@ class LSS:
 
         if bit_checked == 0x80:
             self._fastscan_state = 0
-            self._node.adapter.send(0x7E4, b"\x4F" + bytes(7))
+            self._node.network.send(0x7E4, b"\x4F" + bytes(7))
             return
 
         if lss_sub != self._fastscan_state:
@@ -198,7 +198,7 @@ class LSS:
         if bit_checked == 0 and lss_sub == 3:
             self._state = LSSState.CONFIGURATION
 
-        self._node.adapter.send(0x7E4, b"\x4F" + bytes(7))
+        self._node.network.send(0x7E4, b"\x4F" + bytes(7))
 
     _waiting_cs_dict = {
         0x04: cmd_switch_mode_global_configuration,

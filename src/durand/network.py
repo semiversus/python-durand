@@ -1,16 +1,37 @@
 """ Interfacing python-canopen-node with python-can library
 """
-from typing import Dict, Callable
 from threading import Lock
 
 import can
 
-from .base import AdapterABC
+from abc import ABCMeta, abstractmethod
 
 
-class CANAdapter(AdapterABC):
-    def __init__(self, *args, loop=None, **kwargs):
-        self._bus = can.Bus(*args, **kwargs)
+class NetworkABC(metaclass=ABCMeta):
+    @abstractmethod
+    def add_subscription(self, cob_id: int, callback):
+        """add subscription
+        :param cob_id: cob_id to subscribe
+        :param callback: to be called when cob_id is received
+        """
+
+    @abstractmethod
+    def remove_subscription(self, cob_id: int):
+        """remove subscription
+        :param cob_id: remove subscription for cob_id
+        """
+
+    @abstractmethod
+    def send(self, cob_id: int, msg: bytes):
+        """sending a CAN message to the network
+        :param cob_id: CAN arbitration id
+        :param msg: CAN data bytes
+        """
+
+
+class CANBusNetwork(NetworkABC):
+    def __init__(self, can_bus: can.BusABC, loop=None):
+        self._bus = can_bus
         self._loop = loop
 
         self.lock = Lock()
@@ -40,16 +61,16 @@ class CANAdapter(AdapterABC):
 
 
 class NodeListener(can.Listener):
-    def __init__(self, adapter: CANAdapter):
-        self._adapter = adapter
+    def __init__(self, network: CANBusNetwork):
+        self._network = network
 
     def on_message_received(self, msg: can.Message):
         if msg.is_error_frame or msg.is_remote_frame or msg.is_fd:
             # rtr is currently not supported
             return
 
-        with self._adapter.lock:
-            callback = self._adapter.subscriptions.get(msg.arbitration_id, None)
+        with self._network.lock:
+            callback = self._network.subscriptions.get(msg.arbitration_id, None)
 
         if not callback:
             return

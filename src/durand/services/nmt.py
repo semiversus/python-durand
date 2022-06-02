@@ -27,7 +27,7 @@ class NMTService:
 
         self.state = None
 
-        node.adapter.add_subscription(cob_id=0, callback=self.handle_msg)
+        node.network.add_subscription(cob_id=0, callback=self.handle_msg)
 
         self.set_state(StateEnum.INITIALISATION)
 
@@ -61,7 +61,7 @@ class NMTService:
             self._node.node_id = self.pending_node_id
 
             # send bootup message
-            self._node.adapter.send(0x700 + self._node.node_id, b"\x00")
+            self._node.network.send(0x700 + self._node.node_id, b"\x00")
 
         self.state = state
 

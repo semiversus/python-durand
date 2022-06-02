@@ -1,14 +1,17 @@
 import asyncio
 
+import can
+
 from durand.object_dictionary import ObjectDictionary
 from durand.datatypes import DatatypeEnum
 from durand import MinimalNode, Variable
-from durand.adapters.can import CANAdapter
+from durand.network import CANBusNetwork
 
 
-adapter = CANAdapter(interface='socketcan', channel='can0', loop=asyncio.get_event_loop())
+bus = can.Bus(interface='socketcan', channel='can0')
+network = CANBusNetwork(bus, loop=asyncio.get_event_loop())
 
-node = MinimalNode(adapter, 0x20)
+node = MinimalNode(network, 0x20)
 
 state_control = Variable(DatatypeEnum.UNSIGNED8, access='rw', value=0)
 node.object_dictionary[0x2000] = state_control

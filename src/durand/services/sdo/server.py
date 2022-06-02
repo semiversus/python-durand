@@ -84,37 +84,37 @@ class SDOServer:
 
     def _update_subscription(self, state: StateEnum):
         if state == StateEnum.STOPPED:
-            self._node.adapter.remove_subscription(self._cob_rx)
+            self._node.network.remove_subscription(self._cob_rx)
         elif state == StateEnum.PRE_OPERATIONAL and not (
             self._cob_rx | self._cob_tx
         ) & (1 << 31):
-            self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
+            self._node.network.add_subscription(self._cob_rx, self.handle_msg)
 
     def _update_node(self, state: StateEnum):
         if state == StateEnum.STOPPED:
-            self._node.adapter.remove_subscription(self._cob_rx)
+            self._node.network.remove_subscription(self._cob_rx)
         elif state == StateEnum.PRE_OPERATIONAL:
             self._cob_rx = 0x600 + self._node.node_id
             self._cob_tx = 0x580 + self._node.node_id
-            self._node.adapter.add_subscription(self._cob_rx, self.handle_msg)
+            self._node.network.add_subscription(self._cob_rx, self.handle_msg)
 
     def _update_cob_rx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
         if not ((self._cob_rx | self._cob_tx) & (1 << 31)):
-            self._node.adapter.remove_subscription(self._cob_rx & 0x7FF)
+            self._node.network.remove_subscription(self._cob_rx & 0x7FF)
 
         if not value & (1 << 31) and not self._cob_tx & (1 << 31):
-            self._node.adapter.add_subscription(value & 0x7FF, self.handle_msg)
+            self._node.network.add_subscription(value & 0x7FF, self.handle_msg)
 
         self._cob_rx = value
 
     def _update_cob_tx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
         if not ((self._cob_rx | self._cob_tx) & (1 << 31)) and value & (1 << 31):
-            self._node.adapter.remove_subscription(self._cob_rx & 0x7FF)
+            self._node.network.remove_subscription(self._cob_rx & 0x7FF)
 
         if not value & (1 << 31) and not self._cob_rx & (1 << 31):
-            self._node.adapter.add_subscription(self._cob_rx & 0x7FF, self.handle_msg)
+            self._node.network.add_subscription(self._cob_rx & 0x7FF, self.handle_msg)
 
         self._cob_tx = value
 
@@ -207,7 +207,7 @@ class SDOServer:
 
             response = SDO_STRUCT.pack(0x80, index, subindex)
             response += struct.pack("<I", code)
-            self._node.adapter.send(self._cob_tx, response)
+            self._node.network.send(self._cob_tx, response)
 
     def lookup(self, index: int, subindex: int) -> Variable:
         try:

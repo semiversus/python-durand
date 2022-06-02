@@ -5,12 +5,12 @@ import pytest
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 
-from .adapter import MockAdapter, TxMsg, RxMsg
+from .mock_network import MockNetwork, TxMsg, RxMsg
 
 
 @pytest.mark.parametrize("node_id", [0x01, 0x7F])
 def test_sdo_object_dictionary(node_id):
-    n = Node(MockAdapter(), node_id)
+    n = Node(MockNetwork(), node_id)
 
     assert n.object_dictionary.lookup(0x1200, 0) == Variable(
         DT.UNSIGNED8, "const", value=2, name='Highest Sub-Index Supported'
@@ -29,7 +29,7 @@ def test_sdo_object_dictionary(node_id):
 @pytest.mark.parametrize("node_id", [0x01, 0x7F])
 @pytest.mark.parametrize("index", [1, 2, 127])
 def test_sdo_additional_servers(node_id, index):
-    n = Node(MockAdapter(), node_id)
+    n = Node(MockNetwork(), node_id)
 
     assert n.object_dictionary.lookup(0x1200 + index, 0) == Variable(
         DT.UNSIGNED8, "const", value=3, name='Highest Sub-Index Supported'
@@ -46,11 +46,11 @@ def test_sdo_additional_servers(node_id, index):
 @pytest.mark.parametrize("sdo_server", [1, 127])
 @pytest.mark.parametrize("node_id", [0x01, 0x7F])
 def test_config_sdo_server(node_id, sdo_server):
-    adapter = MockAdapter()
+    network = MockNetwork()
 
-    n = Node(adapter, node_id)
+    n = Node(network, node_id)
 
-    adapter.test(
+    network.test(
         [
             RxMsg(
                 0x640, "40 00 12 00 00 00 00 00"
@@ -67,7 +67,7 @@ def test_config_sdo_server(node_id, sdo_server):
     assert n.sdo_servers[sdo_server].cob_rx is None
     assert n.sdo_servers[sdo_server].cob_tx is None
 
-    adapter.test(
+    network.test(
         [
             # set rx cob of sdo server to 0x640
             RxMsg(
@@ -85,7 +85,7 @@ def test_config_sdo_server(node_id, sdo_server):
     assert n.sdo_servers[sdo_server].cob_rx == 0x640
     assert n.sdo_servers[sdo_server].cob_tx is None
 
-    adapter.test(
+    network.test(
         [
             # set tx cob of sdo server to 0x5C0
             RxMsg(
@@ -110,7 +110,7 @@ def test_config_sdo_server(node_id, sdo_server):
     # set tx cob of sdo server to 0x5D0
     n.sdo_servers[sdo_server].cob_tx = 0x5D0
 
-    adapter.test(
+    network.test(
         [
             RxMsg(
                 0x640, "40 00 12 00 00 00 00 00"
@@ -124,7 +124,7 @@ def test_config_sdo_server(node_id, sdo_server):
     assert n.sdo_servers[sdo_server].cob_rx == 0x640
     assert n.sdo_servers[sdo_server].cob_tx == 0x5D0
 
-    adapter.test(
+    network.test(
         [
             # disable rx of sdo server
             RxMsg(
@@ -141,7 +141,7 @@ def test_config_sdo_server(node_id, sdo_server):
 
     assert n.sdo_servers[sdo_server].cob_rx is None
 
-    adapter.test(
+    network.test(
         [
             # re-enable rx of sdo server and set to 0x641
             RxMsg(
@@ -167,7 +167,7 @@ def test_config_sdo_server(node_id, sdo_server):
     # change rx cob of sdo server and set to 0x642
     n.sdo_servers[sdo_server].cob_rx = 0x642
 
-    adapter.test(
+    network.test(
         [
             RxMsg(
                 0x640, "40 00 12 00 00 00 00 00"
@@ -190,7 +190,7 @@ def test_config_sdo_server(node_id, sdo_server):
     n.sdo_servers[sdo_server].cob_tx = None
     n.sdo_servers[sdo_server].cob_rx = None
 
-    adapter.test(
+    network.test(
         [
             RxMsg(
                 0x642, "40 00 12 00 00 00 00 00"

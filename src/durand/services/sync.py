@@ -21,14 +21,14 @@ class Sync:
         )
         node.object_dictionary.update_callbacks[(0x1005, 0)].add(self._update_cob_id)
 
-        node.adapter.add_subscription(cob_id=self._cob_id, callback=self._receive_sync)
+        node.network.add_subscription(cob_id=self._cob_id, callback=self._receive_sync)
 
     def _update_cob_id(self, value):
-        self._node.adapter.remove_subscription(
+        self._node.network.remove_subscription(
             cob_id=self._cob_id, callback=self._receive_sync
         )
         self._cob_id = value & 0x1FFF_FFFF
-        self._node.adapter.add_subscription(
+        self._node.network.add_subscription(
             cob_id=self._cob_id, callback=self._receive_sync
         )
 

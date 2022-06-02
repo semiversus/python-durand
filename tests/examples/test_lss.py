@@ -2,7 +2,7 @@
 
 from durand import Node
 
-from ..adapter import MockAdapter, TxMsg, RxMsg
+from ..mock_network import MockNetwork, TxMsg, RxMsg
 
 
 def test_global_selection():
@@ -15,12 +15,12 @@ def test_global_selection():
 
     SDO requests are tested on node 1 to see, if the slave is responding.
     """
-    adapter = MockAdapter()
+    network = MockNetwork()
 
     # create the node
-    node = Node(adapter, node_id=0xFF)
+    node = Node(network, node_id=0xFF)
 
-    adapter.test(
+    network.test(
         [
             RxMsg(
                 0x7E5, "04 01 00 00 00 00 00 00"

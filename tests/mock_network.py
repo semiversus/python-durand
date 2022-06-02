@@ -1,7 +1,7 @@
 from typing import List
 from unittest.mock import Mock, call
 
-from durand.adapters import AdapterABC
+from durand.network import NetworkABC
 
 
 class Msg:
@@ -40,7 +40,7 @@ class RxMsg(Msg):
     pass
 
 
-class MockAdapter(AdapterABC):
+class MockNetwork(NetworkABC):
     def __init__(self):
         self.subscriptions = dict()
         self.tx_mock = Mock()

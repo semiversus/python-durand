@@ -1,7 +1,7 @@
 from typing import List
 from dataclasses import dataclass
 
-from .adapters import AdapterABC
+from .network import NetworkABC
 from .object_dictionary import ObjectDictionary
 from .services.sdo import SDOServer
 from .services.pdo import TPDO, RPDO
@@ -28,13 +28,13 @@ class NodeCapabilities:
 class Node:
     def __init__(
         self,
-        adapter: AdapterABC,
+        network: NetworkABC,
         node_id: int,
         od: ObjectDictionary = None,
         capabilities: NodeCapabilities = NodeCapabilities(),
     ):
 
-        self.adapter = adapter
+        self.network = network
         self.node_id = node_id
         od = ObjectDictionary() if od is None else od
         self.object_dictionary = od
@@ -94,5 +94,5 @@ MinimalNodeCapabilities = NodeCapabilities(sdo_servers=1, rpdos=4, tpdos=4)
 
 
 class MinimalNode(Node):
-    def __init__(self, adapter: AdapterABC, node_id: int, od: ObjectDictionary = None):
-        Node.__init__(self, adapter, node_id, od, MinimalNodeCapabilities)
+    def __init__(self, network: NetworkABC, node_id: int, od: ObjectDictionary = None):
+        Node.__init__(self, network, node_id, od, MinimalNodeCapabilities)

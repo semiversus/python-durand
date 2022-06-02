@@ -3,20 +3,20 @@
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 
-from ..adapter import MockAdapter, TxMsg, RxMsg
+from ..mock_network import MockNetwork, TxMsg, RxMsg
 
 
 def test_rpdo_sync():
-    adapter = MockAdapter()
+    network = MockNetwork()
 
     # create the node
-    node = Node(adapter, node_id=2)
+    node = Node(network, node_id=2)
 
     # add a variable with index 0x2000 to the object dictionary of the node
     node.object_dictionary[0x2000] = Variable(DT.INTEGER16, "rw", value=5)
 
     # receive PDO message after changing into Operational state
-    adapter.test(
+    network.test(
         [   TxMsg(0x702, "00"),  # boot-up message from NMT
 
             RxMsg(0x602, "2F 00 14 02 00 00 00 00"),  # set transmission type to 0
@@ -37,8 +37,8 @@ def test_rpdo_sync():
 
     assert node.object_dictionary.read(0x2000, 0) == 5
 
-    adapter.test(
-        [  
+    network.test(
+        [
             RxMsg(0x80, "")  # receive sync message
         ]
     )

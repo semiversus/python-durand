@@ -130,7 +130,7 @@ class DownloadManager:
                     self._server.node, index, subindex, size
                 )
 
-            self._server.node.adapter.send(self._server.cob_tx, response)
+            self._server.node.network.send(self._server.cob_tx, response)
             return
 
         if cmd & 0x01:  # size specified
@@ -149,7 +149,7 @@ class DownloadManager:
         self._receive(msg[4 : 4 + size])
         self._finish()
 
-        self._server.node.adapter.send(self._server.cob_tx, response)
+        self._server.node.network.send(self._server.cob_tx, response)
 
     def download_segment(self, msg: bytes):
         if self._state != TransferState.SEGMENT:
@@ -176,7 +176,7 @@ class DownloadManager:
             self._finish()
 
         cmd = 0x20 + (toggle_bit << 4)
-        self._server.node.adapter.send(
+        self._server.node.network.send(
             self._server.cob_tx, cmd.to_bytes(1, "little") + bytes(7)
         )
 
@@ -209,7 +209,7 @@ class DownloadManager:
         self._sequence_number = 1
 
         cmd = 0xA4
-        self._server.node.adapter.send(
+        self._server.node.network.send(
             self._server.cob_tx,
             cmd.to_bytes(1, "little") + msg[1:4] + b"\x7F" + bytes(3),
         )
@@ -235,7 +235,7 @@ class DownloadManager:
             self._state = TransferState.BLOCK_END
 
         if self._sequence_number == 127 or last_sub_block:
-            self._server.node.adapter.send(
+            self._server.node.network.send(
                 self._server.cob_tx,
                 b"\xA2"
                 + self._sequence_number.to_bytes(1, "little")
@@ -268,4 +268,4 @@ class DownloadManager:
 
         self._finish()
 
-        self._server.node.adapter.send(self._server.cob_tx, b"\xA1" + bytes(7))
+        self._server.node.network.send(self._server.cob_tx, b"\xA1" + bytes(7))

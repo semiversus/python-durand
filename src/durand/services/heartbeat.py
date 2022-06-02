@@ -30,7 +30,7 @@ class HeartbeatProducer:
 
     def _process_heartbeat(self, interval: float):
         msg = bytes((self._node.nmt.state,))  # data contains NMT state
-        self._node.adapter.send(0x700 + self._node.node_id, msg)
+        self._node.network.send(0x700 + self._node.node_id, msg)
 
         self._handle = get_scheduler().add(
             interval, self._process_heartbeat, args=(interval,)

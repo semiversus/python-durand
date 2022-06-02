@@ -7,7 +7,6 @@ CANopen library to implement slave nodes.
 Backends:
 
 - CAN interfaces via python-can_
-- `Network` objects from python-canopen_
 
 .. header
 
@@ -28,6 +27,40 @@ Synopsis
 .. _Sphinx: http://www.sphinx-doc.org
 .. _GitHub.com: https://github.com/semiversus/python-durand
 .. _CiA301: http://can-cia.org/standardization/technical-documents
+
+Feature List
+============
+
+* object dictionary
+  * provides callbacks for *validation*, *update*, *download* and *read*
+  * supports records, arrays and variables
+* EDS support
+  * dynamically generation of EDS file
+  * automatically provided via object 0x1021 ("Store EDS")
+* 128 SDO servers by default (can be reduced to 1)
+  * expitited, segmented and block transfer for up- and download
+  * COB-IDs dynamically configurable
+  * custom up- and download handlers supported
+* 512 TPDOs and 512 RPDOs by default (can be reduced to 0)
+  * dynamically configurable
+  * transmission types: synchronous (acyclic and every nth sync) and event driven
+  * inhibit time supoorted
+* EMCY service
+  * COB-ID dynamically configurable
+  * inhibit time supported
+* Producer Heartbeat service
+  * dynamically configurable
+* NMT service
+  * boot-up service
+  * callback for state change provided
+* SYNC (slave) service
+  * COB-ID dynamically configurable
+  * callback for received sync provided
+* CiA305 Layer Setting Service
+  * fast scan supported
+  * baudrate and node id configuring supoorted
+  * identify remote slave supported
+* Scheduling supporting threaded and async operation
 
 Install
 =======

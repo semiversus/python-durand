@@ -149,7 +149,7 @@ class RPDO:
         if self._on_sync in self._node.sync.callbacks:
             self._node.sync.callbacks.remove(self._on_sync)
 
-        self._node.adapter.remove_subscription(cob_id=self._cob_id & 0x1FFF_FFFF)
+        self._node.network.remove_subscription(cob_id=self._cob_id & 0x1FFF_FFFF)
 
     def _activate_mapping(self):
         if self._unpack_function is not None:
@@ -179,7 +179,7 @@ class RPDO:
         if self._transmission_type <= 240:
             self._node.sync.callbacks.add(self._on_sync)
 
-        self._node.adapter.add_subscription(
+        self._node.network.add_subscription(
             cob_id=self._cob_id & 0x1FFF_FFFF, callback=self._handle_msg
         )
 

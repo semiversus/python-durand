@@ -156,7 +156,7 @@ class UploadManager:
             self._block_size = msg[4]
 
             cmd = 0xC4 if size is None else 0xC6
-            self._server.node.adapter.send(
+            self._server.node.network.send(
                 self._server.cob_tx, cmd.to_bytes(1, "little") + msg[1:4] + size_bytes
             )
             return
@@ -170,7 +170,7 @@ class UploadManager:
             response = (
                 SDO_STRUCT.pack(cmd, index, subindex) + data + bytes(4 - len(data))
             )
-            self._server.node.adapter.send(self._server.cob_tx, response)
+            self._server.node.network.send(self._server.cob_tx, response)
             return
 
         self._state = TransferState.SEGMENT
@@ -179,7 +179,7 @@ class UploadManager:
         cmd = 0x40 + (size is not None)
         size_bytes = struct.pack("<I", size) if size is not None else bytes(4)
 
-        self._server.node.adapter.send(
+        self._server.node.network.send(
             self._server.cob_tx, cmd.to_bytes(1, "little") + msg[1:4] + size_bytes
         )
 
@@ -210,7 +210,7 @@ class UploadManager:
 
         cmd = (toggle_bit << 4) + no_data_left + ((7 - len(data)) << 1)
 
-        self._server.node.adapter.send(
+        self._server.node.network.send(
             self._server.cob_tx, cmd.to_bytes(1, "little") + data + bytes(7 - len(data))
         )
 
@@ -237,7 +237,7 @@ class UploadManager:
             if not self._stream.peek(1):
                 cmd = 0xC1 + ((7 - len(data) % 7) << 2)
                 crc = self._crc if self._crc is not None else 0
-                self._server.node.adapter.send(
+                self._server.node.network.send(
                     self._server.cob_tx,
                     cmd.to_bytes(1, "little") + crc.to_bytes(2, "little") + bytes(5),
                 )
@@ -253,10 +253,10 @@ class UploadManager:
 
         for index, chunk in enumerate(chunks[:-1]):
             response = (index + 1).to_bytes(1, "little") + chunk
-            self._server.node.adapter.send(self._server.cob_tx, response)
+            self._server.node.network.send(self._server.cob_tx, response)
 
         last_block = not following_byte
         first_byte = (last_block << 7) + (len(chunks) if chunks else 1)
         data = chunks[-1] if chunks else b""
         response = first_byte.to_bytes(1, "little") + data + bytes(7 - len(data))
-        self._server.node.adapter.send(self._server.cob_tx, response)
+        self._server.node.network.send(self._server.cob_tx, response)

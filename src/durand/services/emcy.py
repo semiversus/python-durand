@@ -113,4 +113,4 @@ class EMCY:
         msg = (
             struct.pack("<HB", error_code, error_register) + data + bytes(5 - len(data))
         )
-        self._node.adapter.send(self._cob_id, msg)
+        self._node.network.send(self._cob_id, msg)

@@ -3,14 +3,14 @@
 from durand import Node, Variable
 from durand.datatypes import DatatypeEnum as DT
 
-from ..adapter import MockAdapter, TxMsg, RxMsg
+from ..mock_network import MockNetwork, TxMsg, RxMsg
 
 
 def test_local_config_tpdo():
-    adapter = MockAdapter()
+    network = MockNetwork()
 
     # create the node
-    node = Node(adapter, node_id=2)
+    node = Node(network, node_id=2)
 
     # add a variable with index 0x2000 to the object dictionary of the node
     node.object_dictionary[0x2000] = Variable(DT.INTEGER16, "rw", value=5)
@@ -18,7 +18,7 @@ def test_local_config_tpdo():
     node.tpdo[0].mapping = [(0x2000, 0)]
 
     # send PDO message after changing into Operational state
-    adapter.test(
+    network.test(
         [   TxMsg(0x702, "00"),  # boot-up message from NMT
 
             RxMsg(0x000, "80 00"),  # set Pre-Operational state
@@ -31,13 +31,13 @@ def test_local_config_tpdo():
     # update the value and check, if PDO is sent
     node.object_dictionary.write(0x2000, 0, 0xAA)
 
-    adapter.test(
+    network.test(
         [   TxMsg(0x182, "AA 00")
         ]
     )
 
     # check PDO configuration via SDO
-    adapter.test(
+    network.test(
         [
             RxMsg(0x602, "40 00 18 01 00 00 00 00"),  # get cob id for sending
             TxMsg(0x582, "43 00 18 01 82 01 00 40"),  # receive 0x4000_0182
@@ -51,7 +51,7 @@ def test_local_config_tpdo():
 
     node.object_dictionary.write(0x2000, 0, 0xBB)  # this will not trigger a PDO
 
-    adapter.test(
+    network.test(
         [
             RxMsg(0x602, "40 00 18 01 00 00 00 00"),  # get cob id for sending
             TxMsg(0x582, "43 00 18 01 82 01 00 C0"),  # receive 0xC000_0182
@@ -59,17 +59,17 @@ def test_local_config_tpdo():
     )
 
 def test_remote_config_tpdo():
-    adapter = MockAdapter()
+    network = MockNetwork()
 
     # create the node
-    node = Node(adapter, node_id=2)
+    node = Node(network, node_id=2)
 
     # add a variable with index 0x2000 to the object dictionary of the node
     node.object_dictionary[0x2000] = Variable(DT.INTEGER16, "rw", value=5)
 
     assert node.tpdo[10].enable == False
 
-    adapter.test(
+    network.test(
         [   TxMsg(0x702, "00"),  # boot-up message from NMT
 
             RxMsg(0x602, "23 0A 1A 01 02 00 00 20"),  # map object 0x2000 to PDO 11

@@ -289,4 +289,4 @@ class TPDO:
                 return
 
         data = b"".join(self._cache)
-        self._node.adapter.send(self._cob_id & 0x1FFF_FFFF, data)
+        self._node.network.send(self._cob_id & 0x1FFF_FFFF, data)
