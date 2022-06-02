@@ -91,10 +91,34 @@ class FileInfo:
 @dataclass
 class DeviceInfo:
     VendorName: str = None
+    VendorNumber: int = None
+    BaudRate_10: int = None
+    BaudRate_20: int = None
+    BaudRate_50: int = None
+    BaudRate_125: int = None
+    BaudRate_250: int = None
+    BaudRate_500: int = None
+    BaudRate_800: int = None
+    BaudRate_1000: int = None
+    SimpleBootUpMaster: int = 0
+    SimpleBootUpSlave: int = 1
+    Granularity: int = 8
+    NrOfRXPDO: int = None
+    NrOfTXPDO: int = None
+    LSS_Supported: int = 1
 
     @property
     def content(self):
-        return "[DeviceInfo]\n\n"
+        content = "[DeviceInfo]\n"
+
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if value is None:
+                continue
+
+            content += f"{field.name}={value!s}\n"
+
+        return content + "\n"
 
 
 class EDS:
@@ -104,6 +128,12 @@ class EDS:
         self.file_info = FileInfo()
         self.device_info = DeviceInfo()
         self.comments = ""
+
+    replace_node_id = {
+        (0x1014, 0): 0x80, (0x1200, 1): 0x600, (0x1200, 2): 0x580,  # SYNC, SDO Server
+        (0x1400, 1): 0x200, (0x1401, 1): 0x300, (0x1402, 1): 0x400, (0x1403, 1): 0x500,  # RPDOs
+        (0x1800, 1): 0x180, (0x1801, 1): 0x280, (0x1802, 1): 0x380, (0x1803, 1): 0x480,  # TPDOs
+    }
 
     @property
     def content(self):
@@ -158,6 +188,9 @@ class EDS:
             value = self._node.object_dictionary.read(index, subindex)
         else:
             value = variable.value
+
+        if (index, subindex) in EDS.replace_node_id:
+            value = "$NodeID+0x%X" % EDS.replace_node_id[(index, subindex)]
 
         if value is not None:
             if variable.datatype == DatatypeEnum.VISIBLE_STRING:

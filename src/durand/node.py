@@ -18,14 +18,11 @@ from .datatypes import DatatypeEnum as DT
 SDO_SERVERS = 127
 
 
-@dataclass
+@dataclass(frozen=True)
 class NodeCapabilities:
-    sdo_servers: int
-    rpdos: int
-    tpdos: int
-
-
-FullNodeCapabilities = NodeCapabilities(sdo_servers=128, rpdos=512, tpdos=512)
+    sdo_servers: int = 128
+    rpdos: int = 512
+    tpdos: int = 512
 
 
 class Node:
@@ -34,7 +31,7 @@ class Node:
         adapter: AdapterABC,
         node_id: int,
         od: ObjectDictionary = None,
-        capabilities: NodeCapabilities = FullNodeCapabilities,
+        capabilities: NodeCapabilities = NodeCapabilities(),
     ):
 
         self.adapter = adapter
@@ -48,6 +45,9 @@ class Node:
 
         self.tpdo = [TPDO(self, i) for i in range(capabilities.tpdos)]
         self.rpdo = [RPDO(self, i) for i in range(capabilities.rpdos)]
+
+        self.eds.device_info.NrOfRXPDO = capabilities.rpdos
+        self.eds.device_info.NrOfTXPDO = capabilities.tpdos
 
         self.sdo_servers: List[SDOServer] = list()
 
