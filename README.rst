@@ -89,12 +89,12 @@ Creating a node
 .. code-block:: python
 
     import can
-    import durand
+    from durand import CANBusNetwork, Node, Variable, Record, DatatypeEnum
 
     bus = can.Bus(bustype='socketcan', channel='vcan0')
-    network = durand.CANBusNetwork(bus)
+    network = CANBusNetwork(bus)
 
-    node = durand.Node(network, node_id=0x01)
+    node = Node(network, node_id=0x01)
 
 Congratulations! You have a CiA-301 compliant node running. Layer Setting Service is also supported out of the box.
 
@@ -120,7 +120,7 @@ Access values
 The objects can be read and written directly by accesing the object dictionary:
 
 .. code-block:: python
-    
+
     print(f'Value of Parameter 1: {od.read(0x2000, 0)}')
     od.write(0x2001, 1, value=0xAA)
 
@@ -135,16 +135,16 @@ A more event driven approach is using of callbacks. Following callbacks are avai
 * `read_callback` - called when a object is read (return value is used )
 
 .. code-block:: python
-    
+
     od.validate_callbacks[(0x2000, 0)].add(lambda v: v % 2 == 0)
     od.update_callbacks[(0x2001, 2)].add(lambda v: print(f'Update for Parameter 2b: {v}'))
-    od.download_callbacks[(0x2000, 0)].add(lambda v: print(f'Download for Parmeter1: {v}'))
+    od.download_callbacks[(0x2000, 0)].add(lambda v: print(f'Download for Parmeter 1: {v}'))
     od.set_read_callback(0x2001, 1, lambda: 17)
 
 PDO mapping
 -----------
 
-PDOs can dynamically mapped via the SDO server or programmatically. The PDO indicies
+PDOs can dynamically mapped via the SDO server or programmatically. The PDO indices
 start at 0.
 
 .. code-block:: python
