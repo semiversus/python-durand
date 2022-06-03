@@ -25,14 +25,13 @@ od.write(0x2001, 1, value=0xAA)
 
 ### Add callbacks
 od.validate_callbacks[(0x2000, 0)].add(lambda v: v % 2 == 0)
-od.update_callbacks[(0x2001, 2)].add(lambda v: print f'Update for Parameter 2b: {v}')
-od.download_callbacks[(0x2000, 0)].add(lambda v: print f'Download for Parmeter1: {v}')
-
+od.update_callbacks[(0x2001, 2)].add(lambda v: print(f'Update for Parameter 2b: {v}'))
+od.download_callbacks[(0x2000, 0)].add(lambda v: print(f'Download for Parmeter1: {v}'))
 od.set_read_callback(0x2001, 1, lambda: 17)
 
 ### Map PDOs
 node.tpdo[0].mapping = [(0x2001, 1), (0x2001, 2)]
 node.tpdo[0].transmission_type = 1  # transmit on every SYNC
 
-node.rpdo[0].mapping [(0x2000, 0)]
+node.rpdo[0].mapping = [(0x2000, 0)]
 node.tpdo[0].transmission_type = 255  # event driven (processed when received)
