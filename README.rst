@@ -129,10 +129,10 @@ Add callbacks
 
 A more event driven approach is using of callbacks. Following callbacks are available:
 
-* <code>validate_callbacks</code> - called before a value in the object dictionary is going to be updated
-* <code>update_callbacks</code> - called when the value has been changed (via <code>od.write</code> or via CAN bus)
-* <code>download_callbacks</code> - called when the value has been changed via CAN bus
-* <code>read_callback</code> - called when a object is read (return value is used )
+* `validate_callbacks` - called before a value in the object dictionary is going to be updated
+* `update_callbacks` - called when the value has been changed (via `od.write` or via CAN bus)
+* `download_callbacks` - called when the value has been changed via CAN bus
+* `read_callback` - called when a object is read (return value is used )
 
 .. code-block:: python
     
