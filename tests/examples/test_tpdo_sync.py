@@ -54,7 +54,6 @@ def test_remote_config_sync():
             RxMsg(0x000, "80 00"),  # set Pre-Operational state
             RxMsg(0x000, "01 00"),  # set Operational state
 
-
             RxMsg(0x80, ""),  # sending a SYNC (without changed data)
             TxMsg(0x182, "05 00"),
             RxMsg(0x80, ""),  # sending another SYNC (without changed data)

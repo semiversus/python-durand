@@ -91,7 +91,7 @@ class DownloadManager:
                         0x06090031, self._multiplexor
                     )  # value too high
 
-                self._server.node.object_dictionary.write(*self._multiplexor, value)
+                self._server.node.object_dictionary.write(*self._multiplexor, value, downloaded=True)
         except struct.error:
             raise SDODomainAbort(
                 0x06070010, self._multiplexor

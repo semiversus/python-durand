@@ -131,7 +131,7 @@ class SDOServer:
             cob = 1 << 31
 
         self._node.object_dictionary.write(
-            0x1200 + self._index, 1, cob, downloaded=False
+            0x1200 + self._index, 1, cob
         )
 
     @property
@@ -147,7 +147,7 @@ class SDOServer:
             cob = 1 << 31
 
         self._node.object_dictionary.write(
-            0x1200 + self._index, 2, cob, downloaded=False
+            0x1200 + self._index, 2, cob
         )
 
     @property
@@ -157,7 +157,7 @@ class SDOServer:
     @client_node_id.setter
     def client_node_id(self, value):
         return self._node.object_dictionary.write(
-            0x1200 + self._index, 3, value, downloaded=False
+            0x1200 + self._index, 3, value
         )
 
     def handle_msg(self, cob_id: int, msg: bytes):

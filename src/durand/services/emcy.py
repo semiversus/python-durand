@@ -70,7 +70,7 @@ class EMCY:
         else:
             self._cob_id |= 1 << 31
 
-        self._node.object_dictionary.write(0x1014, 0, self._cob_id, downloaded=False)
+        self._node.object_dictionary.write(0x1014, 0, self._cob_id)
 
     def _update_inhibit_time(self, value: int):
         if self._timer_handle is not None:
@@ -84,7 +84,7 @@ class EMCY:
 
     @inhibit_time.setter
     def inhibit_time(self, value: float):
-        self._node.object_dictionary.write(0x1015, 0, value * 10_000, downloaded=False)
+        self._node.object_dictionary.write(0x1015, 0, value * 10_000)
 
     def _time_up(self):
         self._timer_handle = None
@@ -95,7 +95,7 @@ class EMCY:
         self._deferred_emcy = None
 
     def set(self, error_code: int, error_register: int, data: bytes = b""):
-        self._node.object_dictionary.write(0x1001, 0, error_register, downloaded=False)
+        self._node.object_dictionary.write(0x1001, 0, error_register)
 
         if not self.enable:
             return

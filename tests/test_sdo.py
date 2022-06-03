@@ -684,7 +684,7 @@ def test_upload_segmented_various_length(with_handler, size, with_pst):
     if with_handler:
         n.sdo_servers[0].upload_manager.set_handler_callback(handler_callback)
     else:
-        n.object_dictionary.write(0x2000, 0, b"\xAA" * size, False)
+        n.object_dictionary.write(0x2000, 0, b"\xAA" * size)
 
     if with_pst:
         network.receive(

@@ -49,7 +49,7 @@ class RPDO:
         od[0x1600 + index] = map_array
 
         od.write(
-            0x1600 + index, 0, 0, downloaded=False
+            0x1600 + index, 0, 0
         )  # set number of mapped objects to 0
         od.download_callbacks[(0x1600 + index, 0)].add(self._downloaded_map_length)
 
@@ -104,7 +104,7 @@ class RPDO:
             self._deactivate_mapping()
 
         self._node.object_dictionary.write(
-            0x1400 + self._index, 1, self._cob_id, downloaded=False
+            0x1400 + self._index, 1, self._cob_id
         )
 
     def _downloaded_map_length(self, length):
@@ -125,14 +125,14 @@ class RPDO:
     def mapping(self, multiplexors: TMultiplexor):
         self._map(multiplexors)
         self._node.object_dictionary.write(
-            0x1600 + self._index, 0, len(multiplexors), downloaded=False
+            0x1600 + self._index, 0, len(multiplexors)
         )
         for _entry, multiplexor in enumerate(multiplexors):
             index, subindex = multiplexor
             variable = self._node.object_dictionary.lookup(index, subindex)
             value = (index << 16) + (subindex << 8) + variable.size
             self._node.object_dictionary.write(
-                0x1600 + self._index, _entry + 1, value, downloaded=False
+                0x1600 + self._index, _entry + 1, value
             )
 
     def _map(self, multiplexors: TMultiplexor):
@@ -202,6 +202,6 @@ class RPDO:
 
         for multiplexor, value in zip(self._multiplexors, values):
             try:
-                self._node.object_dictionary.write(*multiplexor, value)
+                self._node.object_dictionary.write(*multiplexor, value, downloaded=True)
             except:  # there is no possibility to response in such a case
                 pass

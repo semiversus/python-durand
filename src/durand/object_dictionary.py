@@ -186,7 +186,7 @@ class ObjectDictionary:
 
             return self._objects[index][subindex]
 
-    def write(self, index: int, subindex: int, value: Any, downloaded: bool = True):
+    def write(self, index: int, subindex: int, value: Any, downloaded: bool = False):
         if index in self._variables:
             multiplexor = (index, 0)
         else:

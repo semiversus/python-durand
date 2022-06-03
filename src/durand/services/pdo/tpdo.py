@@ -116,7 +116,7 @@ class TPDO:
         od[0x1A00 + index] = map_array
 
         od.write(
-            0x1A00 + index, 0, 0, downloaded=False
+            0x1A00 + index, 0, 0
         )  # set number of mapped objects to 0
         od.download_callbacks[(0x1A00 + index, 0)].add(self._downloaded_map_length)
 
@@ -185,7 +185,7 @@ class TPDO:
             self._deactivate_mapping()
 
         self._node.object_dictionary.write(
-            0x1800 + self._index, 1, self._cob_id, downloaded=False
+            0x1800 + self._index, 1, self._cob_id
         )
 
     @property
@@ -195,7 +195,7 @@ class TPDO:
     @inhibit_time.setter
     def inhibit_time(self, value: float):
         return self._node.object_dictionary.write(
-            0x1800 + self._index, 3, value * 10_000, downloaded=False
+            0x1800 + self._index, 3, value * 10_000
         )
 
     def _downloaded_map_length(self, length):
@@ -216,14 +216,14 @@ class TPDO:
     def mapping(self, multiplexors: TMultiplexor):
         self._map(multiplexors)
         self._node.object_dictionary.write(
-            0x1A00 + self._index, 0, len(multiplexors), downloaded=False
+            0x1A00 + self._index, 0, len(multiplexors)
         )
         for _entry, multiplexor in enumerate(multiplexors):
             index, subindex = multiplexor
             variable = self._node.object_dictionary.lookup(index, subindex)
             value = (index << 16) + (subindex << 8) + variable.size
             self._node.object_dictionary.write(
-                0x1A00 + self._index, _entry + 1, value, downloaded=False
+                0x1A00 + self._index, _entry + 1, value
             )
 
     def _map(self, multiplexors: TMultiplexor):
