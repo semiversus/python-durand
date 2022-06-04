@@ -91,7 +91,9 @@ class DownloadManager:
                         0x06090031, self._multiplexor
                     )  # value too high
 
-                self._server.node.object_dictionary.write(*self._multiplexor, value, True)
+                self._server.node.object_dictionary.write(
+                    *self._multiplexor, value, downloaded = True
+                )
         except struct.error as exc:
             raise SDODomainAbort(
                 0x06070010, self._multiplexor
@@ -99,7 +101,9 @@ class DownloadManager:
         except SDODomainAbort as exc:
             raise exc
         except Exception as exc:
-            raise SDODomainAbort(0x08000020, self._multiplexor) from exc  # data can't be stored
+            raise SDODomainAbort(
+                0x08000020, self._multiplexor
+            ) from exc  # data can't be stored
         finally:
             self._init(TransferState.NONE)
 

@@ -224,9 +224,7 @@ class UploadManager:
 
         if self._state != TransferState.BLOCK:
             self._abort()
-            raise SDODomainAbort(
-                0x05040001
-            )  # client command specificer not valid
+            raise SDODomainAbort(0x05040001)  # client command specificer not valid
 
         if msg[0] & 0x03 == 2:
             data = self._stream.read(msg[1] * 7)

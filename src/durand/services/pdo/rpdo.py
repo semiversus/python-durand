@@ -48,9 +48,7 @@ class RPDO:
         )
         od[0x1600 + index] = map_array
 
-        od.write(
-            0x1600 + index, 0, 0
-        )  # set number of mapped objects to 0
+        od.write(0x1600 + index, 0, 0)  # set number of mapped objects to 0
         od.download_callbacks[(0x1600 + index, 0)].add(self._downloaded_map_length)
 
         node.nmt.state_callbacks.add(self._update_nmt_state)
@@ -103,9 +101,7 @@ class RPDO:
             self._cob_id |= 1 << 31
             self._deactivate_mapping()
 
-        self._node.object_dictionary.write(
-            0x1400 + self._index, 1, self._cob_id
-        )
+        self._node.object_dictionary.write(0x1400 + self._index, 1, self._cob_id)
 
     def _downloaded_map_length(self, length):
         multiplexors = []
@@ -124,16 +120,12 @@ class RPDO:
     @mapping.setter
     def mapping(self, multiplexors: TMultiplexor):
         self._map(multiplexors)
-        self._node.object_dictionary.write(
-            0x1600 + self._index, 0, len(multiplexors)
-        )
+        self._node.object_dictionary.write(0x1600 + self._index, 0, len(multiplexors))
         for _entry, multiplexor in enumerate(multiplexors):
             index, subindex = multiplexor
             variable = self._node.object_dictionary.lookup(index, subindex)
             value = (index << 16) + (subindex << 8) + variable.size
-            self._node.object_dictionary.write(
-                0x1600 + self._index, _entry + 1, value
-            )
+            self._node.object_dictionary.write(0x1600 + self._index, _entry + 1, value)
 
     def _map(self, multiplexors: TMultiplexor):
         self._deactivate_mapping()

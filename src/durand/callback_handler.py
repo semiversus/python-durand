@@ -7,7 +7,9 @@ log = logging.getLogger(__name__)
 
 class FailMode(Enum):
     IGNORE = 1  # exceptions are ignored
-    FIRST_FAIL = 2  # first callback raising an exception will stop calling the following
+    FIRST_FAIL = (
+        2  # first callback raising an exception will stop calling the following
+    )
     LATE_FAIL = (
         3  # all callbacks will be called, but the first exception will be escalated
     )

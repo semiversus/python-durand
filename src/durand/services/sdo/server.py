@@ -130,9 +130,7 @@ class SDOServer:
         if cob is None:
             cob = 1 << 31
 
-        self._node.object_dictionary.write(
-            0x1200 + self._index, 1, cob
-        )
+        self._node.object_dictionary.write(0x1200 + self._index, 1, cob)
 
     @property
     def cob_tx(self):
@@ -146,9 +144,7 @@ class SDOServer:
         if cob is None:
             cob = 1 << 31
 
-        self._node.object_dictionary.write(
-            0x1200 + self._index, 2, cob
-        )
+        self._node.object_dictionary.write(0x1200 + self._index, 2, cob)
 
     @property
     def client_node_id(self):
@@ -156,9 +152,7 @@ class SDOServer:
 
     @client_node_id.setter
     def client_node_id(self, value):
-        return self._node.object_dictionary.write(
-            0x1200 + self._index, 3, value
-        )
+        return self._node.object_dictionary.write(0x1200 + self._index, 3, value)
 
     def handle_msg(self, cob_id: int, msg: bytes):
         assert (
