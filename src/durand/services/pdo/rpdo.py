@@ -108,7 +108,7 @@ class RPDO:
         )
 
     def _downloaded_map_length(self, length):
-        multiplexors = list()
+        multiplexors = []
 
         for subindex in range(1, length + 1):
             value = self._node.object_dictionary.read(0x1600 + self._index, subindex)
@@ -190,7 +190,7 @@ class RPDO:
         self._write_data(self._synced_msg)
         self._synced_msg = None
 
-    def _handle_msg(self, cob_id: int, msg: bytes):
+    def _handle_msg(self, _cob_id: int, msg: bytes):
         if self._transmission_type <= 240:
             self._synced_msg = msg
             return

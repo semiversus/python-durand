@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from collections import defaultdict
 from typing import Any, Dict, Tuple, Callable, Union
 import itertools
@@ -33,7 +33,7 @@ class Variable:
             self.maximum is not None or self.minimum is not None
         ):
             raise ValueError(
-                "Minimum and Maximum not available with datatype %rs" % self.datatype
+                f"Minimum and Maximum not available with datatype {self.datatype!r}"
             )
 
     @property
@@ -80,7 +80,7 @@ class Variable:
 class Record:
     def __init__(self, name: str = None):
         self.name = name
-        self._variables: Dict[int, Variable] = dict()
+        self._variables: Dict[int, Variable] = {}
 
     def __getitem__(self, subindex: int):
         if subindex == 0:
@@ -150,9 +150,9 @@ TObject = Union[Variable, Record, Array]
 
 class ObjectDictionary:
     def __init__(self):
-        self._variables: Dict[TMultiplexor, Variable] = dict()
-        self._objects: Dict[int, TObject] = dict()
-        self._data: Dict[TMultiplexor, Any] = dict()
+        self._variables: Dict[TMultiplexor, Variable] = {}
+        self._objects: Dict[int, TObject] = {}
+        self._data: Dict[TMultiplexor, Any] = {}
 
         self.validate_callbacks: Dict[TMultiplexor, CallbackHandler] = defaultdict(
             lambda: CallbackHandler(fail_mode=FailMode.FIRST_FAIL)
@@ -163,7 +163,7 @@ class ObjectDictionary:
         self.download_callbacks: Dict[TMultiplexor, CallbackHandler] = defaultdict(
             CallbackHandler
         )
-        self._read_callbacks: Dict[TMultiplexor, Callable] = dict()
+        self._read_callbacks: Dict[TMultiplexor, Callable] = {}
 
     def __getitem__(self, index: int):
         try:
@@ -171,11 +171,11 @@ class ObjectDictionary:
         except KeyError:
             return self._objects[index]
 
-    def __setitem__(self, index: int, object: TObject):
-        if isinstance(object, Variable):
-            self._variables[index] = object
+    def __setitem__(self, index: int, obj: TObject):
+        if isinstance(obj, Variable):
+            self._variables[index] = obj
         else:
-            self._objects[index] = object
+            self._objects[index] = obj
 
     def lookup(self, index: int, subindex: int = None) -> Variable:
         try:

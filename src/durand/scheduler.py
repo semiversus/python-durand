@@ -1,5 +1,5 @@
 import asyncio
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Tuple, TypeVar, Dict, Any
 import functools
@@ -29,7 +29,8 @@ class AbstractScheduler(metaclass=ABCMeta):
         :param entry: the scheduler entry to be canceled
         """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def lock(self):
         """A global lock which can be used the assure thread safety"""
 
@@ -64,7 +65,7 @@ class SyncScheduler(AbstractScheduler):
         self._wake_up = threading.Event()
 
     def add(self, delay: float, callback, args=(), kwargs=None) -> asyncio.TimerHandle:
-        if kwargs == None:
+        if kwargs is None:
             kwargs = {}
         self._wake_up.set()
         return self._sched.enter(delay, 0, callback, args, kwargs)
@@ -94,8 +95,8 @@ class VirtualScheduler(AbstractScheduler):
         self._time = 0
         self._lock = threading.Lock()
         self._id = 1
-        self._entry_dict: Dict[int, VirtualScheduler.Entry] = dict()
-        self._timestamp_dict: Dict[int, float] = dict()
+        self._entry_dict: Dict[int, VirtualScheduler.Entry] = {}
+        self._timestamp_dict: Dict[int, float] = {}
 
     def add(self, delay: float, callback, args=(), kwargs=None) -> TEntry:
         if kwargs is None:

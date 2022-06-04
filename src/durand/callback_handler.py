@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 class FailMode(Enum):
     IGNORE = 1  # exceptions are ignored
-    FIRST_FAIL = 2  # first callback raising a exception will stop calling the following and escalate the exception
+    FIRST_FAIL = 2  # first callback raising an exception will stop calling the following
     LATE_FAIL = (
         3  # all callbacks will be called, but the first exception will be escalated
     )
@@ -15,7 +15,7 @@ class FailMode(Enum):
 
 class CallbackHandler:
     def __init__(self, fail_mode: FailMode = FailMode.IGNORE):
-        self._callbacks = list()
+        self._callbacks = []
         self._fail_mode = fail_mode
 
     def add(self, callback):
@@ -33,11 +33,11 @@ class CallbackHandler:
         for callback in self._callbacks:
             try:
                 callback(*args, **kwargs)
-            except Exception as e:
+            except Exception as exc:
                 if self._fail_mode == FailMode.LATE_FAIL and exception is None:
-                    exception = e
+                    exception = exc
                 elif self._fail_mode == FailMode.FIRST_FAIL:
-                    raise e
+                    raise exc
                 else:
                     log.debug("Ignored exception in callback handler", exc_info=True)
 

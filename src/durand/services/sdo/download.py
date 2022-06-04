@@ -61,11 +61,11 @@ class DownloadManager:
         if self._handler:
             try:
                 self._handler.on_receive(data)
-            except:
+            except Exception as exc:
                 self._abort()
                 raise SDODomainAbort(
                     0x08000020, self._multiplexor
-                )  # data can't be stored
+                ) from exc  # data can't be stored
         else:
             self._buffer.extend(data)
 
@@ -91,15 +91,15 @@ class DownloadManager:
                         0x06090031, self._multiplexor
                     )  # value too high
 
-                self._server.node.object_dictionary.write(*self._multiplexor, value, downloaded=True)
-        except struct.error:
+                self._server.node.object_dictionary.write(*self._multiplexor, value, True)
+        except struct.error as exc:
             raise SDODomainAbort(
                 0x06070010, self._multiplexor
-            )  # datatype size is not matching
-        except SDODomainAbort as e:
-            raise e
-        except Exception as e:
-            raise SDODomainAbort(0x08000020, self._multiplexor)  # data can't be stored
+            ) from exc  # datatype size is not matching
+        except SDODomainAbort as exc:
+            raise exc
+        except Exception as exc:
+            raise SDODomainAbort(0x08000020, self._multiplexor) from exc  # data can't be stored
         finally:
             self._init(TransferState.NONE)
 

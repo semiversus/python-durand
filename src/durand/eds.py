@@ -1,5 +1,5 @@
 from dataclasses import dataclass, fields
-from re import match, sub
+from re import match
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -44,8 +44,8 @@ class FileInfo:
         if self.CreationDate:
             try:
                 datetime.strptime("%m-%d-%Y", self.CreationDate)
-            except ValueError:
-                raise ValueError("CreationDate format invalid")
+            except ValueError as exc:
+                raise ValueError("CreationDate format invalid") from exc
 
         if self.CreationTime:
             if len(self.CreationTime) != 7 or self.CreationTime[5:] not in ("AM", "PM"):
@@ -53,14 +53,14 @@ class FileInfo:
 
             try:
                 datetime.strptime("%I:%M", self.CreationTime[:6])
-            except ValueError:
-                raise ValueError("CreationTime format invalid")
+            except ValueError as exc:
+                raise ValueError("CreationTime format invalid") from exc
 
         if self.ModificationDate:
             try:
                 datetime.strptime("%m-%d-%Y", self.ModificationDate)
-            except ValueError:
-                raise ValueError("ModificationDate format invalid")
+            except ValueError as exc:
+                raise ValueError("ModificationDate format invalid") from exc
 
         if self.ModificationTime:
             if len(self.ModificationTime) != 7 or self.ModificationTime[5:] not in (
@@ -71,8 +71,8 @@ class FileInfo:
 
             try:
                 datetime.strptime("%I:%M", self.ModificationTime[:6])
-            except ValueError:
-                raise ValueError("ModificationTime format invalid")
+            except ValueError as exc:
+                raise ValueError("ModificationTime format invalid") from exc
 
     @property
     def content(self):
@@ -198,7 +198,8 @@ class EDS:
             value = variable.value
 
         if (index, subindex) in EDS.replace_node_id:
-            value = "$NodeID+0x%X" % EDS.replace_node_id[(index, subindex)]
+            offset = EDS.replace_node_id[(index, subindex)]
+            value = f"$NodeID+0x{offset:x}"
 
         if value is not None:
             if variable.datatype == DatatypeEnum.VISIBLE_STRING:
@@ -216,22 +217,22 @@ class EDS:
 
         return content
 
-    def describe_object(self, index: int, object) -> str:
-        if isinstance(object, Variable):
-            return self.describe_variable(index, None, object)
+    def describe_object(self, index: int, obj) -> str:
+        if isinstance(obj, Variable):
+            return self.describe_variable(index, None, obj)
 
-        content = f"[{index:04X}]\nSubNumber={len(object)}\n"
+        content = f"[{index:04X}]\nSubNumber={len(obj)}\n"
 
-        if object.name:
-            content += f"ParameterName={object.name}\n"
+        if obj.name:
+            content += f"ParameterName={obj.name}\n"
         else:
             content += f"ParameterName=Object{index:04X}\n"
 
         content += (
-            "ObjectType=0x8\n\n" if isinstance(object, Record) else "ObjectType=0x9\n\n"
+            "ObjectType=0x8\n\n" if isinstance(obj, Record) else "ObjectType=0x9\n\n"
         )
 
-        for subindex, variable in object:
+        for subindex, variable in obj:
             content += self.describe_variable(index, subindex, variable)
 
         return content
@@ -244,8 +245,8 @@ class EDS:
 
         content += "\n"
 
-        for index, object in objects.items():
-            content += self.describe_object(index, object)
+        for index, obj in objects.items():
+            content += self.describe_object(index, obj)
 
         return content
 

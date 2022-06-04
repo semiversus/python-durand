@@ -100,7 +100,7 @@ class SDOServer:
 
     def _update_cob_rx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
-        if not ((self._cob_rx | self._cob_tx) & (1 << 31)):
+        if not (self._cob_rx | self._cob_tx) & (1 << 31):
             self._node.network.remove_subscription(self._cob_rx & 0x7FF)
 
         if not value & (1 << 31) and not self._cob_tx & (1 << 31):
@@ -191,16 +191,16 @@ class SDOServer:
                     self.download_manager.download_block_init(msg)
             else:
                 raise SDODomainAbort(0x05040001)  # SDO command not implemented
-        except Exception as e:
+        except Exception as exc:
             code = 0x08000000  # general error
 
             _, index, subindex = SDO_STRUCT.unpack(msg[:4])
 
-            if isinstance(e, SDODomainAbort):
-                code = e.code
-                if e.multiplexor:
-                    index, subindex = e.multiplexor
-                elif e.multiplexor is False:
+            if isinstance(exc, SDODomainAbort):
+                code = exc.code
+                if exc.multiplexor:
+                    index, subindex = exc.multiplexor
+                elif exc.multiplexor is False:
                     index, subindex = 0, 0
             else:
                 log.exception("Exception during processing %r", msg)
@@ -215,8 +215,8 @@ class SDOServer:
         except KeyError:
             try:
                 self._node.object_dictionary.lookup(index, subindex=None)
-            except KeyError:
-                raise SDODomainAbort(0x06020000)  # object does not exist
+            except KeyError as exc:
+                raise SDODomainAbort(0x06020000) from exc  # object does not exist
 
         raise SDODomainAbort(0x06090011)  # subindex does not exist
 
@@ -224,8 +224,9 @@ class SDOServer:
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])
 
         try:
-            variable = self._node.object_dictionary.lookup(index, subindex)
+            self._node.object_dictionary.lookup(index, subindex)
         except KeyError:
+            # if index:subindex not available - there is nothing to abort
             return
 
         self.download_manager.on_abort((index, subindex))

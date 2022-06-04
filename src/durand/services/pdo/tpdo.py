@@ -56,7 +56,7 @@ class SyncHandler:
         self._divider = divider
 
     def cancel(self):
-        self._tpdo._node.sync.callbacks.remove(self._on_sync)
+        self._tpdo.node.sync.callbacks.remove(self._on_sync)
 
     def _on_sync(self):
         if self._divider:
@@ -121,6 +121,10 @@ class TPDO:
         od.download_callbacks[(0x1A00 + index, 0)].add(self._downloaded_map_length)
 
         node.nmt.state_callbacks.add(self._update_nmt_state)
+
+    @property
+    def node(self):
+        return self._node
 
     def _update_nmt_state(self, state: StateEnum):
         if state == StateEnum.OPERATIONAL:
@@ -199,7 +203,7 @@ class TPDO:
         )
 
     def _downloaded_map_length(self, length):
-        multiplexors = list()
+        multiplexors = []
 
         for subindex in range(1, length + 1):
             value = self._node.object_dictionary.read(0x1A00 + self._index, subindex)

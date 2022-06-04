@@ -3,8 +3,8 @@ from enum import IntEnum
 import logging
 import struct
 
-from .nmt import StateEnum
 from durand.scheduler import get_scheduler
+from .nmt import StateEnum
 
 if TYPE_CHECKING:
     from ..node import Node
@@ -49,7 +49,7 @@ class LSS:
 
         return lss_address
 
-    def handle_msg(self, cob_id: int, msg: bytes):
+    def handle_msg(self, _cob_id: int, msg: bytes):
         cs = msg[0]
 
         if self._state == LSSState.WAITING:
@@ -91,14 +91,14 @@ class LSS:
             self._state = LSSState.CONFIGURATION
             self._node.network.send(0x7E4, b"\x44" + bytes(7))
 
-        self._received_selective_address == [None] * 4
+        self._received_selective_address = [None] * 4
 
     def cmd_inquire_identity(self, msg: bytes):
         index = msg[0] - 0x5A
         value = self._get_own_address()[index]
         self._node.network.send(0x7E4, msg[:1] + value.to_bytes(4, "little") + bytes(3))
 
-    def cmd_inquire_node_id(self, msg: bytes):
+    def cmd_inquire_node_id(self, _msg: bytes):
         self._node.network.send(
             0x7E4, b"\x5e" + self._node.node_id.to_bytes(1, "little") + bytes(6)
         )
@@ -142,7 +142,7 @@ class LSS:
         self._pending_baudrate = None
         get_scheduler().add(delay, self._node.nmt.reset)
 
-    def cmd_store_configuration(self, msg: bytes):
+    def cmd_store_configuration(self, _msg: bytes):
         # store configuration is not supported
         self._node.network.send(0x7E4, b"\x17\x01" + bytes(6))
 
@@ -169,7 +169,7 @@ class LSS:
 
         self._remote_slave_address = [None] * 6
 
-    def cmd_identify_nonconfigured_remote_slaves(self, msg: bytes):
+    def cmd_identify_nonconfigured_remote_slaves(self, _msg: bytes):
         if self._node.node_id == 0xFF:
             self._node.network.send(0x7E4, b"\x50" + bytes(7))
 

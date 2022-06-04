@@ -80,6 +80,7 @@ class UploadManager:
         self._server = server
 
         self._handler_callback = None
+        self._stream = None
 
         self._multiplexor: Tuple[int, int] = None
         self._state = TransferState.NONE
@@ -125,10 +126,10 @@ class UploadManager:
 
         try:
             value = self._server.node.object_dictionary.read(index, subindex)
-        except:
+        except Exception as exc:
             raise SDODomainAbort(
                 0x08000020, self._multiplexor
-            )  # data can't be transferred
+            ) from exc  # data can't be transferred
 
         if is_numeric(variable.datatype):
             value = variable.pack(value)
@@ -187,7 +188,7 @@ class UploadManager:
         if self._state != TransferState.SEGMENT:
             self._abort()
             raise SDODomainAbort(
-                0x05040001, variable=False
+                0x05040001, multiplexor=False
             )  # client command specificer not valid
 
         toggle_bit = bool(msg[0] & 0x10)
@@ -224,7 +225,7 @@ class UploadManager:
         if self._state != TransferState.BLOCK:
             self._abort()
             raise SDODomainAbort(
-                0x05040001, variable=None
+                0x05040001
             )  # client command specificer not valid
 
         if msg[0] & 0x03 == 2:

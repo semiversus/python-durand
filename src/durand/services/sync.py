@@ -32,5 +32,5 @@ class Sync:
             cob_id=self._cob_id, callback=self._receive_sync
         )
 
-    def _receive_sync(self, cob_id: int, msg: bytes):
+    def _receive_sync(self, _cob_id: int, _msg: bytes):
         self.callbacks.call()

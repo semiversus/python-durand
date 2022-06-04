@@ -49,7 +49,7 @@ class Node:
         self.eds.device_info.NrOfRXPDO = capabilities.rpdos
         self.eds.device_info.NrOfTXPDO = capabilities.tpdos
 
-        self.sdo_servers: List[SDOServer] = list()
+        self.sdo_servers: List[SDOServer] = []
 
         assert (
             1 <= SDO_SERVERS <= 128
@@ -87,7 +87,7 @@ class Node:
         # EDS provider
         od[0x1021] = Variable(DT.DOMAIN, "ro", name="Store EDS")
         od[0x1022] = Variable(DT.UNSIGNED8, "ro", value=0, name="Store Format")
-        od.set_read_callback(0x1021, 0, lambda: self.eds.content.encode())
+        od.set_read_callback(0x1021, 0, self.eds.content.encode)
 
 
 MinimalNodeCapabilities = NodeCapabilities(sdo_servers=1, rpdos=4, tpdos=4)

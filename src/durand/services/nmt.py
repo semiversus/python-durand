@@ -31,7 +31,7 @@ class NMTService:
 
         self.set_state(StateEnum.INITIALISATION)
 
-    def handle_msg(self, cob_id: int, msg: bytes):
+    def handle_msg(self, _cob_id: int, msg: bytes):
         cs, node_id = msg[:2]
 
         if node_id not in (0, self._node.node_id):  # 0 is used for broadcast
