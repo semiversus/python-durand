@@ -1,6 +1,5 @@
 from enum import IntEnum
 import logging
-from sre_parse import State
 from typing import TYPE_CHECKING
 
 from ..callback_handler import CallbackHandler
