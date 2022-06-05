@@ -11,14 +11,6 @@ if TYPE_CHECKING:
     from durand.node import Node
 
 
-def datetime_to_time(d: datetime):
-    return d.strftime("%I:%M") + ("AM" if d.hour < 12 else "PM")
-
-
-def datetime_to_date(d: datetime):
-    return d.strftime("%m-%d-%Y")
-
-
 @dataclass
 class FileInfo:
     FileName: str = "python_durand_device.eds"
@@ -38,7 +30,7 @@ class FileInfo:
             raise ValueError("FileVersion is Unsigned8")
         if not 0 <= self.FileRevision <= 255:
             raise ValueError("FileRevision is Unsigned8")
-        if not match("[d].[d]", self.EDSVersion):
+        if not match("\d.\d", self.EDSVersion):
             raise ValueError("EDSVersion type mismatch")
 
         if self.CreationDate:
@@ -76,6 +68,8 @@ class FileInfo:
 
     @property
     def content(self):
+        self.validate()
+
         content = "[FileInfo]\n"
 
         for field in fields(self):
@@ -162,10 +156,10 @@ class EDS:
         mandatory_objects = self.extract_objects(objects, (0x1000, 0x1001, 0x1018))
         content += self.describe_section("MandatoryObjects", mandatory_objects)
 
-        optional_indicies = [
+        optional_indices = [
             index for index in objects if index < 0x2000 or index >= 0x6000
         ]
-        optional_objects = self.extract_objects(objects, optional_indicies)
+        optional_objects = self.extract_objects(objects, optional_indices)
         content += self.describe_section("OptionalObjects", optional_objects)
 
         content += self.describe_section("ManufacturerObjects", objects)
