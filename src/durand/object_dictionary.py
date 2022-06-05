@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from collections import defaultdict
-from typing import Any, Dict, Tuple, Callable, Union
+from typing import Any, Dict, Tuple, Callable, Union, Optional
 import itertools
 import logging
 
@@ -11,7 +11,7 @@ from .callback_handler import CallbackHandler, FailMode
 log = logging.getLogger(__name__)
 
 
-TMultiplexor = Union[int, Tuple[int, int]]
+TMultiplexor = Tuple[int, int]
 
 
 @dataclass
@@ -19,10 +19,10 @@ class Variable:
     datatype: DatatypeEnum
     access: str
     value: Any = None
-    factor: float = None
-    minimum: float = None
-    maximum: float = None
-    name: str = None
+    factor: Optional[float] = None
+    minimum: Optional[float] = None
+    maximum: Optional[float] = None
+    name: Optional[str] = None
 
     def __post_init__(self):
         if self.datatype not in DatatypeEnum:
@@ -45,7 +45,7 @@ class Variable:
         return self.access in ("ro", "rw", "const")
 
     @property
-    def size(self) -> int:
+    def size(self) -> Optional[int]:
         if is_numeric(self.datatype):
             return struct_dict[self.datatype].size
 
@@ -150,7 +150,7 @@ TObject = Union[Variable, Record, Array]
 
 class ObjectDictionary:
     def __init__(self):
-        self._variables: Dict[TMultiplexor, Variable] = {}
+        self._variables: Dict[int, Variable] = {}
         self._objects: Dict[int, TObject] = {}
         self._data: Dict[TMultiplexor, Any] = {}
 
@@ -177,14 +177,16 @@ class ObjectDictionary:
         else:
             self._objects[index] = obj
 
-    def lookup(self, index: int, subindex: int = None) -> Variable:
+    def lookup(self, index: int, subindex: int = None) -> TObject:
         try:
             return self._variables[index]
         except KeyError:
             if subindex is None:
                 return self._objects[index]
 
-            return self._objects[index][subindex]
+            object = self._objects[index]
+            assert isinstance(object, (Record, Array)), "Record or Array expected"
+            return object[subindex]
 
     def write(self, index: int, subindex: int, value: Any, downloaded: bool = False):
         if index in self._variables:
@@ -219,6 +221,7 @@ class ObjectDictionary:
             return self._data[multiplexor]
         except KeyError:
             variable = self.lookup(index, subindex)
+            assert isinstance(variable, Variable), "Variable expected"
             value = variable.value
 
             if value is None:

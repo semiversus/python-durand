@@ -2,7 +2,8 @@ python-can==4.0.0
 pytest==6.2.4
 pytest-cov==2.12.1
 flake8==3.9.2
-mypy==0.910
-rstcheck==3.3.1
+mypy==0.960
+rstcheck==6.0.0
+pylint==2.14.0
 codecov==2.1.11
 black==22.3.0

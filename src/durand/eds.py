@@ -1,7 +1,7 @@
 from dataclasses import dataclass, fields
 from re import match
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from durand.object_dictionary import Variable, Record
 from durand.datatypes import DatatypeEnum
@@ -25,13 +25,13 @@ class FileInfo:
     FileVersion: int = 0
     FileRevision: int = 0
     EDSVersion: str = "4.0"
-    Description: str = None
-    CreationTime: str = None
-    CreationDate: str = None
-    CreatedBy: str = None
-    ModificationTime: str = None
-    ModificationDate: str = None
-    ModifiedBy: str = None
+    Description: Optional[str] = None
+    CreationTime: Optional[str] = None
+    CreationDate: Optional[str] = None
+    CreatedBy: Optional[str] = None
+    ModificationTime: Optional[str] = None
+    ModificationDate: Optional[str] = None
+    ModifiedBy: Optional[str] = None
 
     def validate(self):
         if not 0 <= self.FileVersion <= 255:
@@ -90,21 +90,21 @@ class FileInfo:
 
 @dataclass
 class DeviceInfo:
-    VendorName: str = None
-    VendorNumber: int = None
-    BaudRate_10: int = None
-    BaudRate_20: int = None
-    BaudRate_50: int = None
-    BaudRate_125: int = None
-    BaudRate_250: int = None
-    BaudRate_500: int = None
-    BaudRate_800: int = None
-    BaudRate_1000: int = None
+    VendorName: Optional[str] = None
+    VendorNumber: Optional[int] = None
+    BaudRate_10: Optional[int] = None
+    BaudRate_20: Optional[int] = None
+    BaudRate_50: Optional[int] = None
+    BaudRate_125: Optional[int] = None
+    BaudRate_250: Optional[int] = None
+    BaudRate_500: Optional[int] = None
+    BaudRate_800: Optional[int] = None
+    BaudRate_1000: Optional[int] = None
     SimpleBootUpMaster: int = 0
     SimpleBootUpSlave: int = 1
     Granularity: int = 8
-    NrOfRXPDO: int = None
-    NrOfTXPDO: int = None
+    NrOfRXPDO: Optional[int] = None
+    NrOfTXPDO: Optional[int] = None
     LSS_Supported: int = 1
 
     @property
@@ -219,7 +219,7 @@ class EDS:
 
     def describe_object(self, index: int, obj) -> str:
         if isinstance(obj, Variable):
-            return self.describe_variable(index, None, obj)
+            return self.describe_variable(index, 0, obj)
 
         content = f"[{index:04X}]\nSubNumber={len(obj)}\n"
 

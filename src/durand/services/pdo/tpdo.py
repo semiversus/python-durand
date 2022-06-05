@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence, Optional
 import logging
 
 from durand.object_dictionary import TMultiplexor, Variable, Record, Array
@@ -84,12 +84,12 @@ class TPDO:
 
         self._transmission_type = 255
 
-        self._multiplexors = ()
+        self._multiplexors: Sequence[TMultiplexor] = ()
         self._pack_functions = None
         self._cache = None
 
-        self._sync_handler: SyncHandler = None
-        self._inhibit_timer: InhibitTimer = None
+        self._sync_handler: Optional[SyncHandler] = None
+        self._inhibit_timer: Optional[InhibitTimer] = None
 
         od = self._node.object_dictionary
 
@@ -213,16 +213,20 @@ class TPDO:
         return self._multiplexors
 
     @mapping.setter
-    def mapping(self, multiplexors: TMultiplexor):
+    def mapping(self, multiplexors: Sequence[TMultiplexor]):
         self._map(multiplexors)
         self._node.object_dictionary.write(0x1A00 + self._index, 0, len(multiplexors))
         for _entry, multiplexor in enumerate(multiplexors):
             index, subindex = multiplexor
             variable = self._node.object_dictionary.lookup(index, subindex)
+            assert isinstance(variable, Variable), "Variable expected"
+            # TODO: check if variable.size is None
+            # TODO: check if overall size <= 8
+            assert variable.size is not None
             value = (index << 16) + (subindex << 8) + variable.size
             self._node.object_dictionary.write(0x1A00 + self._index, _entry + 1, value)
 
-    def _map(self, multiplexors: TMultiplexor):
+    def _map(self, multiplexors: Sequence[TMultiplexor]):
         self._deactivate_mapping()
         self._multiplexors = tuple(multiplexors)
         self._activate_mapping()

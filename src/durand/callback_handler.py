@@ -1,5 +1,6 @@
 from enum import Enum
 import logging
+from typing import List, Callable
 
 
 log = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class FailMode(Enum):
 
 class CallbackHandler:
     def __init__(self, fail_mode: FailMode = FailMode.IGNORE):
-        self._callbacks = []
+        self._callbacks: List[Callable] = []
         self._fail_mode = fail_mode
 
     def add(self, callback):

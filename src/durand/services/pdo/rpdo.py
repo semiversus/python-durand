@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence, Callable, Any, Optional
 
 from durand.object_dictionary import TMultiplexor, Variable, Record, Array
 from durand.datatypes import DatatypeEnum as DT
@@ -21,10 +21,10 @@ class RPDO:
 
         self._transmission_type = 255
 
-        self._multiplexors = ()
-        self._unpack_function = None
+        self._multiplexors: Sequence[TMultiplexor] = ()
+        self._unpack_function: Optional[Callable[[bytes], Sequence[Any]]] = None
 
-        self._synced_msg = None
+        self._synced_msg: Optional[bytes] = None
 
         od = self._node.object_dictionary
 
@@ -118,16 +118,20 @@ class RPDO:
         return self._multiplexors
 
     @mapping.setter
-    def mapping(self, multiplexors: TMultiplexor):
+    def mapping(self, multiplexors: Sequence[TMultiplexor]):
         self._map(multiplexors)
         self._node.object_dictionary.write(0x1600 + self._index, 0, len(multiplexors))
         for _entry, multiplexor in enumerate(multiplexors):
             index, subindex = multiplexor
             variable = self._node.object_dictionary.lookup(index, subindex)
+            assert isinstance(variable, Variable), "Variable expected"
+            # TODO: check if variable.size is None
+            # TODO: check if overall size <= 8
+            assert variable.size is not None
             value = (index << 16) + (subindex << 8) + variable.size
             self._node.object_dictionary.write(0x1600 + self._index, _entry + 1, value)
 
-    def _map(self, multiplexors: TMultiplexor):
+    def _map(self, multiplexors: Sequence[TMultiplexor]):
         self._deactivate_mapping()
         self._multiplexors = tuple(multiplexors)
         self._activate_mapping()
@@ -190,6 +194,7 @@ class RPDO:
         self._write_data(msg)
 
     def _write_data(self, msg: bytes):
+        assert self._unpack_function is not None, "RPDO should be deactivated"
         values = self._unpack_function(msg)
 
         for multiplexor, value in zip(self._multiplexors, values):

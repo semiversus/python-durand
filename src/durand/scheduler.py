@@ -1,16 +1,16 @@
 import asyncio
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Tuple, TypeVar, Dict, Any
+from typing import Callable, Tuple, TypeVar, Dict, Any, Generic
 import functools
 import threading
-from sched import scheduler
+import sched
 
 
 TEntry = TypeVar("TEntry")  # type of scheduler entry
 
 
-class AbstractScheduler(metaclass=ABCMeta):
+class AbstractScheduler(Generic[TEntry], metaclass=ABCMeta):
     @abstractmethod
     def add(self, delay: float, callback, args=(), kwargs=None) -> TEntry:
         """Add a new scheduler entry.
@@ -41,14 +41,16 @@ class AsyncScheduler(AbstractScheduler):
 
         self._lock = threading.Lock()
 
-    def add(self, delay: float, callback, args=(), kwargs=None) -> asyncio.TimerHandle:
+    def add(
+        self, delay: float, callback, args=(), kwargs=None
+    ) -> asyncio.TimerHandle:  # type: ignore[override]
         if kwargs:
             callback = functools.partial(callback, **kwargs)
 
         loop = self._loop or asyncio.get_event_loop()
         return loop.call_later(delay, callback, *args)
 
-    def cancel(self, entry: asyncio.TimerHandle):
+    def cancel(self, entry: asyncio.TimerHandle):  # type: ignore[override]
         entry.cancel()
 
     @property
@@ -61,16 +63,18 @@ class SyncScheduler(AbstractScheduler):
         if lock is None:
             lock = threading.Lock()
         self._lock = lock
-        self._sched = scheduler()
+        self._sched = sched.scheduler()
         self._wake_up = threading.Event()
 
-    def add(self, delay: float, callback, args=(), kwargs=None) -> asyncio.TimerHandle:
+    def add(
+        self, delay: float, callback, args=(), kwargs=None
+    ) -> sched.Event:  # type: ignore[override]
         if kwargs is None:
             kwargs = {}
         self._wake_up.set()
         return self._sched.enter(delay, 0, callback, args, kwargs)
 
-    def cancel(self, entry):
+    def cancel(self, entry: sched.Event):  # type: ignore[override]
         self._sched.cancel(entry)
 
     def run(self):
@@ -94,21 +98,21 @@ class VirtualScheduler(AbstractScheduler):
     def __init__(self):
         self._time = 0
         self._lock = threading.Lock()
-        self._id = 1
+        self._entry_index = 1
         self._entry_dict: Dict[int, VirtualScheduler.Entry] = {}
         self._timestamp_dict: Dict[int, float] = {}
 
-    def add(self, delay: float, callback, args=(), kwargs=None) -> TEntry:
+    def add(self, delay: float, callback, args=(), kwargs=None) -> int:  # type: ignore[override]
         if kwargs is None:
             kwargs = {}
 
         entry = VirtualScheduler.Entry(callback, args, kwargs)
-        self._entry_dict[self._id] = entry
-        self._timestamp_dict[self._id] = self._time + delay
-        self._id += 1
-        return self._id - 1
+        self._entry_dict[self._entry_index] = entry
+        self._timestamp_dict[self._entry_index] = self._time + delay
+        self._entry_index += 1
+        return self._entry_index - 1
 
-    def cancel(self, entry: int):
+    def cancel(self, entry: int):  # type: ignore[override]
         self._entry_dict.pop(entry)
         self._timestamp_dict.pop(entry)
 
@@ -121,16 +125,16 @@ class VirtualScheduler(AbstractScheduler):
             if earliest_timestamp > start_time + duration:
                 break
 
-            ids = tuple(
-                id
-                for id, timestamp in self._timestamp_dict.items()
+            entry_indices = tuple(
+                entry_index
+                for entry_index, timestamp in self._timestamp_dict.items()
                 if timestamp == earliest_timestamp
             )
-            for id in ids:
-                entry = self._entry_dict[id]
+            for entry_index in entry_indices:
+                entry = self._entry_dict[entry_index]
                 entry.callback(*entry.args, **entry.kwargs)
-                self._entry_dict.pop(id)
-                self._timestamp_dict.pop(id)
+                self._entry_dict.pop(entry_index)
+                self._timestamp_dict.pop(entry_index)
 
         self._time = start_time + duration
 
@@ -139,13 +143,23 @@ class VirtualScheduler(AbstractScheduler):
         return self._lock
 
 
-_scheduler = AsyncScheduler()
+class SchedulerProvider:
+    def __init__(self):
+        self._scheduler: AbstractScheduler = AsyncScheduler()
+
+    def set(self, scheduler: AbstractScheduler) -> None:
+        self._scheduler = scheduler
+
+    def get(self) -> AbstractScheduler:
+        return self._scheduler
+
+
+scheduler_provider = SchedulerProvider()
 
 
 def get_scheduler() -> AbstractScheduler:
-    return _scheduler
+    return scheduler_provider.get()
 
 
 def set_scheduler(scheduler: AbstractScheduler):
-    global _scheduler
-    _scheduler = scheduler
+    scheduler_provider.set(scheduler)

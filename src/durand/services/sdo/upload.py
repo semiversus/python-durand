@@ -1,5 +1,6 @@
 import struct
-from typing import Tuple
+from typing import Tuple, Optional
+from abc import ABCMeta, abstractmethod
 from binascii import crc_hqx
 
 from durand.datatypes import is_numeric
@@ -8,7 +9,7 @@ from .server import SDODomainAbort, SDOServer, TransferState, SDO_STRUCT
 
 
 class BaseUploadHandler:
-    size = None
+    size = 0
 
     def on_read(self, size: int) -> bytes:
         """on_read is called when new data is requested
@@ -24,7 +25,27 @@ class BaseUploadHandler:
         """on_abort is called when the transfer was aborted"""
 
 
-class HandlerStream:
+class StreamBase(metaclass=ABCMeta):
+    size = 0
+
+    @abstractmethod
+    def peek(self, size: int) -> bytes:
+        """ """
+
+    @abstractmethod
+    def read(self, size: int) -> bytes:
+        """ """
+
+    @abstractmethod
+    def abort(self):
+        """ """
+
+    @abstractmethod
+    def release(self):
+        """ """
+
+
+class HandlerStream(StreamBase):
     def __init__(self, upload_handler: BaseUploadHandler):
         self._handler = upload_handler
         self.size = upload_handler.size
@@ -55,7 +76,7 @@ class HandlerStream:
         self._buffer.clear()
 
 
-class FixedStream:
+class FixedStream(StreamBase):
     def __init__(self, data: bytes):
         self._buffer = memoryview(data)
         self.size = len(self._buffer)
@@ -80,17 +101,17 @@ class UploadManager:
         self._server = server
 
         self._handler_callback = None
-        self._stream = None
+        self._stream: Optional[StreamBase] = None
 
-        self._multiplexor: Tuple[int, int] = None
+        self._multiplexor: Optional[Tuple[int, int]] = None
         self._state = TransferState.NONE
 
         # used for block transfer
-        self._block_size = None
-        self._crc = None
+        self._block_size = 0
+        self._crc: Optional[int] = None
 
         # used for segmented transfer
-        self._toggle_bit = None
+        self._toggle_bit = False
 
     def set_handler_callback(self, callback):
         self._handler_callback = callback
@@ -109,11 +130,13 @@ class UploadManager:
         self._stream = None
         self._state = TransferState.NONE
 
-    def setup(self, index, subindex) -> int:
+    def setup(self, index, subindex) -> StreamBase:
         variable = self._server.lookup(index, subindex)
 
         if variable.access == "wo":
-            raise SDODomainAbort(0x06010001)  # read a write-only object
+            raise SDODomainAbort(
+                0x06010001, multiplexor=(index, subindex)
+            )  # read a write-only object
 
         self._multiplexor = (index, subindex)
 
@@ -121,8 +144,7 @@ class UploadManager:
             handler = self._handler_callback(self._server.node, index, subindex)
 
             if handler:
-                self._stream = HandlerStream(handler)
-                return
+                return HandlerStream(handler)
 
         try:
             value = self._server.node.object_dictionary.read(index, subindex)
@@ -134,7 +156,7 @@ class UploadManager:
         if is_numeric(variable.datatype):
             value = variable.pack(value)
 
-        self._stream = FixedStream(value)
+        return FixedStream(value)
 
     def init_upload(self, msg: bytes):
         if self._state != TransferState.NONE:
@@ -142,7 +164,7 @@ class UploadManager:
 
         cmd, index, subindex = SDO_STRUCT.unpack(msg[:4])
 
-        self.setup(index, subindex)
+        self._stream = self.setup(index, subindex)
         size = self._stream.size
 
         if msg[0] & 0xE3 == 0xA0 and (
@@ -187,10 +209,9 @@ class UploadManager:
     def upload_segment(self, msg: bytes):
         if self._state != TransferState.SEGMENT:
             self._abort()
-            raise SDODomainAbort(
-                0x05040001, multiplexor=False
-            )  # client command specificer not valid
+            raise SDODomainAbort(0x05040001)  # client command specificer not valid
 
+        assert isinstance(self._stream, StreamBase), "Stream not available"
         toggle_bit = bool(msg[0] & 0x10)
 
         if toggle_bit != self._toggle_bit:
@@ -216,15 +237,17 @@ class UploadManager:
         )
 
     def upload_sub_block(self, msg: bytes):
+        if self._state not in (TransferState.BLOCK, TransferState.BLOCK_END):
+            self._abort()
+            raise SDODomainAbort(0x05040001)  # client command specificer not valid
+
+        assert isinstance(self._stream, StreamBase), "Stream not available"
+
         if self._state == TransferState.BLOCK_END:
             self._stream.release()
             self._stream = None
             self._state = TransferState.NONE
             return
-
-        if self._state != TransferState.BLOCK:
-            self._abort()
-            raise SDODomainAbort(0x05040001)  # client command specificer not valid
 
         if msg[0] & 0x03 == 2:
             data = self._stream.read(msg[1] * 7)

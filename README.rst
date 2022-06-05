@@ -17,11 +17,11 @@ Synopsis
 - Under MIT license (2021 Günther Jena)
 - Source is hosted on GitHub.com_
 - Tested on Python 3.7, 3.8, 3.9 and 3.10
-- Unit tested with pytest_, coding style checked with Flake8_, static type checked with mypy_, static code checked with Pylint_, documented with Sphinx_
+- Unit tested with pytest_, coding style done with Black_, static type checked with mypy_, static code checked with Pylint_, documented with Sphinx_
 - Supporting CiA301_ (EN 50325-4)
 
 .. _pytest: https://docs.pytest.org/en/latest
-.. _Flake8: http://flake8.pycqa.org/en/latest/
+.. _Black: https://black.readthedocs.io/en/stable/
 .. _mypy: http://mypy-lang.org/
 .. _Pylint: https://www.pylint.org/
 .. _Sphinx: http://www.sphinx-doc.org

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 from enum import IntEnum
 import logging
 import struct
@@ -23,8 +23,8 @@ class LSS:
 
         self._state = LSSState.WAITING
 
-        self._received_selective_address = [None] * 4
-        self._remote_slave_address = [None] * 6
+        self._received_selective_address: List[Optional[int]] = [None] * 4
+        self._remote_slave_address: List[Optional[int]] = [None] * 6
         self._fastscan_state = 0
 
         self._pending_baudrate = None
@@ -138,7 +138,8 @@ class LSS:
             get_scheduler().add(delay, self._change_baudrate, args=(delay,))
 
     def _change_baudrate(self, delay: float):
-        self._change_baudrate_cb(self._pending_baudrate)
+        if self._change_baudrate_cb:
+            self._change_baudrate_cb(self._pending_baudrate)
         self._pending_baudrate = None
         get_scheduler().add(delay, self._node.nmt.reset)
 

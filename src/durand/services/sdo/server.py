@@ -185,34 +185,37 @@ class SDOServer:
                     self.download_manager.download_block_init(msg)
             else:
                 raise SDODomainAbort(0x05040001)  # SDO command not implemented
-        except Exception as exc:
-            code = 0x08000000  # general error
-
-            _, index, subindex = SDO_STRUCT.unpack(msg[:4])
-
-            if isinstance(exc, SDODomainAbort):
-                code = exc.code
-                if exc.multiplexor:
-                    index, subindex = exc.multiplexor
-                elif exc.multiplexor is False:
-                    index, subindex = 0, 0
-            else:
-                log.exception("Exception during processing %r", msg)
-
+        except SDODomainAbort as exc:
+            index, subindex = 0, 0
+            if exc.multiplexor:
+                index, subindex = exc.multiplexor
             response = SDO_STRUCT.pack(0x80, index, subindex)
-            response += struct.pack("<I", code)
+            response += struct.pack("<I", exc.code)
             self._node.network.send(self._cob_tx, response)
+        except Exception as exc:
+            _, index, subindex = SDO_STRUCT.unpack(msg[:4])
+            # TODO: use index, subindex only when available in msg
+            log.exception("Exception during processing %r", msg)
+
+            response = SDO_STRUCT.pack(0x80, index, subindex) + b"\x00\x00\x00\x08"
+            self._node.network.send(self._cob_tx, response)  # report general error
 
     def lookup(self, index: int, subindex: int) -> Variable:
         try:
-            return self._node.object_dictionary.lookup(index, subindex)
+            variable = self._node.object_dictionary.lookup(index, subindex)
+            assert isinstance(variable, Variable), "Variable expected"
+            return variable
         except KeyError:
             try:
                 self._node.object_dictionary.lookup(index, subindex=None)
             except KeyError as exc:
-                raise SDODomainAbort(0x06020000) from exc  # object does not exist
+                raise SDODomainAbort(
+                    0x06020000, multiplexor=(index, subindex)
+                ) from exc  # object does not exist
 
-        raise SDODomainAbort(0x06090011)  # subindex does not exist
+        raise SDODomainAbort(
+            0x06090011, multiplexor=(index, subindex)
+        )  # subindex does not exist
 
     def abort(self, msg_data: bytes):
         _, index, subindex = SDO_STRUCT.unpack(msg_data[:4])

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 import struct
 
 from durand.object_dictionary import Variable
@@ -15,10 +15,11 @@ class EMCY:
         self._node = node
 
         self._timer_handle = None
-        self._inhibit_time = 0
+        self._inhibit_time = 0.0
         self._deferred_emcy = None
+        self._stopped = True
 
-        self._cob_id = 0x80 + node.node_id
+        self._cob_id: int = 0x80 + node.node_id
 
         node.object_dictionary[0x1001] = Variable(
             DT.UNSIGNED8, "ro", 0, name="Error Register"
@@ -44,12 +45,13 @@ class EMCY:
 
     def _update_nmt_state(self, state: StateEnum):
         if state == StateEnum.STOPPED:
-            self._cob_id = None
+            self._stopped = True
         elif (
             state in (StateEnum.PRE_OPERATIONAL, StateEnum.OPERATIONAL)
-            and self._cob_id is None
+            and self._stopped
         ):
             self._cob_id = 0x80 + self._node.node_id
+            self._stopped = False
 
     @property
     def cob_id(self):
@@ -107,6 +109,9 @@ class EMCY:
         self._send(error_code, error_register, data)
 
     def _send(self, error_code: int, error_register: int, data: bytes = b""):
+        if self._stopped:
+            return
+
         if self._inhibit_time:
             self._timer_handle = get_scheduler().add(self._inhibit_time, self._time_up)
 

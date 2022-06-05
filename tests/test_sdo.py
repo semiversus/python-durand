@@ -106,7 +106,7 @@ def test_sdo_download_fails():
 
     # invalid client command specifier
     network.receive(0x602, build_sdo_packet(cs=7, index=0x1200, data=b"AB"))
-    network.tx_mock.assert_called_with(0x582, b"\x80\x00\x12\x00\x01\x00\x04\x05")
+    network.tx_mock.assert_called_with(0x582, b"\x80\x00\x00\x00\x01\x00\x04\x05")
 
     # write 'const' and 'ro' variables
     network.receive(

@@ -1,5 +1,6 @@
 from enum import IntEnum
 import logging
+from sre_parse import State
 from typing import TYPE_CHECKING
 
 from ..callback_handler import CallbackHandler
@@ -25,7 +26,7 @@ class NMTService:
 
         self.state_callbacks = CallbackHandler()
 
-        self.state = None
+        self.state = StateEnum.STOPPED
 
         node.network.add_subscription(cob_id=0, callback=self.handle_msg)
 

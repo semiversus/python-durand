@@ -1,9 +1,10 @@
 """ Interfacing python-canopen-node with python-can library
 """
 from abc import ABCMeta, abstractmethod
+from typing import Dict, Callable
 from threading import Lock
 
-import can
+import can  # type: ignore
 
 
 class NetworkABC(metaclass=ABCMeta):
@@ -34,7 +35,7 @@ class CANBusNetwork(NetworkABC):
         self._loop = loop
 
         self.lock = Lock()
-        self.subscriptions = {}
+        self.subscriptions: Dict[int, Callable[[int, bytes], None]] = {}
 
         listener = NodeListener(self)
         can.Notifier(self._bus, (listener,), 1, self._loop)
