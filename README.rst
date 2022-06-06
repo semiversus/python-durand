@@ -80,6 +80,9 @@ Feature List
 
 * Scheduling supporting threaded and async operation
 
+TODO
+  * build object dictionary via reading an EDS file
+
 Examples
 ========
 
