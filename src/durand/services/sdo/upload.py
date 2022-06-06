@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 from binascii import crc_hqx
 
 from durand.datatypes import is_numeric
+from durand.object_dictionary import TMultiplexor
 
 from .server import SDODomainAbort, SDOServer, TransferState, SDO_STRUCT
 
@@ -30,19 +31,23 @@ class StreamBase(metaclass=ABCMeta):
 
     @abstractmethod
     def peek(self, size: int) -> bytes:
-        """ """
+        """Getting bytes without removing it from the source
+        :param size: number of bytes to peek
+        """
 
     @abstractmethod
     def read(self, size: int) -> bytes:
-        """ """
+        """Read bytes (with removing them from the source)
+        :param size: number of bytes to read
+        """
 
     @abstractmethod
     def abort(self):
-        """ """
+        """Aborting the current upload"""
 
     @abstractmethod
     def release(self):
-        """ """
+        """Finishing the current upload on success"""
 
 
 class HandlerStream(StreamBase):
@@ -103,7 +108,7 @@ class UploadManager:
         self._handler_callback = None
         self._stream: Optional[StreamBase] = None
 
-        self._multiplexor: Optional[Tuple[int, int]] = None
+        self._multiplexor: Optional[TMultiplexor] = None
         self._state = TransferState.NONE
 
         # used for block transfer

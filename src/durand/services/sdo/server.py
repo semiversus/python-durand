@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Tuple
 import logging
 
 from durand.datatypes import DatatypeEnum as DT
-from durand.object_dictionary import Variable, Record
+from durand.object_dictionary import TMultiplexor, Variable, Record
 from durand.services.nmt import StateEnum
 
 
@@ -19,7 +19,7 @@ SDO_STRUCT = struct.Struct("<BHB")
 
 
 class SDODomainAbort(Exception):
-    def __init__(self, code: int, multiplexor: Tuple[int, int] = None):
+    def __init__(self, code: int, multiplexor: TMultiplexor = None):
         Exception.__init__(self)
         self.code = code
         self.multiplexor = multiplexor

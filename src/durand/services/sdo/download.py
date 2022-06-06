@@ -3,7 +3,7 @@ from binascii import crc_hqx
 from typing import Tuple, Optional
 
 from .server import SDODomainAbort, SDOServer, TransferState, SDO_STRUCT
-from ...object_dictionary import Variable
+from ...object_dictionary import Variable, TMultiplexor
 
 
 class BaseDownloadHandler:
@@ -27,7 +27,7 @@ class DownloadManager:
         self._handler_callback = None
         self._handler: Optional[BaseDownloadHandler] = None
 
-        self._multiplexor: Optional[Tuple[int, int]] = None
+        self._multiplexor: Optional[TMultiplexor] = None
         self._state = TransferState.NONE
 
         self._buffer = bytearray()

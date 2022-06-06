@@ -30,7 +30,7 @@ class FileInfo:
             raise ValueError("FileVersion is Unsigned8")
         if not 0 <= self.FileRevision <= 255:
             raise ValueError("FileRevision is Unsigned8")
-        if not match("\d.\d", self.EDSVersion):
+        if not match(r"\d.\d", self.EDSVersion):
             raise ValueError("EDSVersion type mismatch")
 
         if self.CreationDate:
