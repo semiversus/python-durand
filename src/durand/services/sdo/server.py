@@ -78,6 +78,15 @@ class SDOServer:
 
         od[0x1200 + index] = server_record
 
+        self._handle_cs_dict = {
+            0: self.download_manager.download_segment,
+            1: self.download_manager.init_download,
+            2: self.upload_manager.init_upload,
+            3: self.upload_manager.upload_segment,
+            5: self.upload_manager.init_upload,
+            6: self._handle_download_block
+        }
+
     @property
     def node(self):
         return self._node
@@ -119,7 +128,7 @@ class SDOServer:
         self._cob_tx = value
 
     @property
-    def cob_rx(self):
+    def cob_rx(self) -> int:
         if self._cob_rx & (1 << 31):
             return None
 
@@ -133,7 +142,7 @@ class SDOServer:
         self._node.object_dictionary.write(0x1200 + self._index, 1, cob)
 
     @property
-    def cob_tx(self):
+    def cob_tx(self) -> int:
         if self._cob_tx & (1 << 31):
             return None
 
@@ -147,14 +156,14 @@ class SDOServer:
         self._node.object_dictionary.write(0x1200 + self._index, 2, cob)
 
     @property
-    def client_node_id(self):
+    def client_node_id(self) -> int:
         return self._node.object_dictionary.read(0x1200 + self._index, 3)
 
     @client_node_id.setter
-    def client_node_id(self, value):
+    def client_node_id(self, value: int):
         return self._node.object_dictionary.write(0x1200 + self._index, 3, value)
 
-    def handle_msg(self, cob_id: int, msg: bytes):
+    def handle_msg(self, cob_id: int, msg: bytes) -> None:
         assert (
             cob_id == self._cob_rx
         ), "Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})"
@@ -163,28 +172,17 @@ class SDOServer:
             ccs = (msg[0] & 0xE0) >> 5
 
             if msg[0] == 0x80:  # abort
-                self.abort(msg)
-            elif self.download_manager.block_transfer_active:
-                self.download_manager.download_sub_block(msg)
-            elif self.upload_manager.block_transfer_active:
-                self.upload_manager.upload_sub_block(msg)
-            elif ccs == 0:  # download segments
-                self.download_manager.download_segment(msg)
-            elif ccs == 1:  # init segmented download
-                self.download_manager.init_download(msg)
-            elif ccs == 2:  # init block upload
-                self.upload_manager.init_upload(msg)
-            elif ccs == 3:  # init segmented upload
-                self.upload_manager.upload_segment(msg)
-            elif ccs == 5 and msg[0] & 0x03 == 0:
-                self.upload_manager.init_upload(msg)
-            elif ccs == 6:  # init block download
-                if msg[0] & 0x01:  # end block transfer
-                    self.download_manager.download_block_end(msg)
-                else:  # init block transfer
-                    self.download_manager.download_block_init(msg)
-            else:
-                raise SDODomainAbort(0x05040001)  # SDO command not implemented
+                return self.abort(msg)
+            if self.download_manager.block_transfer_active:
+                return self.download_manager.download_sub_block(msg)
+            if self.upload_manager.block_transfer_active:
+                return self.upload_manager.upload_sub_block(msg)
+            # TODO: handle active download or upload by a state machine
+
+            try:
+                return self._handle_cs_dict[ccs](msg)
+            except KeyError as exc:  # ccs not found
+                raise SDODomainAbort(0x05040001) from exc # SDO command not implemented
         except SDODomainAbort as exc:
             index, subindex = 0, 0
             if exc.multiplexor:
@@ -199,6 +197,12 @@ class SDOServer:
 
             response = SDO_STRUCT.pack(0x80, index, subindex) + b"\x00\x00\x00\x08"
             self._node.network.send(self._cob_tx, response)  # report general error
+
+    def _handle_download_block(self, msg: bytes):
+        if msg[0] & 0x01:  # end block transfer
+            self.download_manager.download_block_end(msg)
+        else:  # init block transfer
+            self.download_manager.download_block_init(msg)
 
     def lookup(self, index: int, subindex: int) -> Variable:
         try:

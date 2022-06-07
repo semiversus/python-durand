@@ -184,9 +184,9 @@ class ObjectDictionary:
             if subindex is None:
                 return self._objects[index]
 
-            object = self._objects[index]
-            assert isinstance(object, (Record, Array)), "Record or Array expected"
-            return object[subindex]
+            obj = self._objects[index]
+            assert isinstance(obj, (Record, Array)), "Record or Array expected"
+            return obj[subindex]
 
     def write(self, index: int, subindex: int, value: Any, downloaded: bool = False):
         if index in self._variables:

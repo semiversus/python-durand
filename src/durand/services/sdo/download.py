@@ -1,6 +1,6 @@
 import struct
 from binascii import crc_hqx
-from typing import Tuple, Optional
+from typing import Optional
 
 from .server import SDODomainAbort, SDOServer, TransferState, SDO_STRUCT
 from ...object_dictionary import Variable, TMultiplexor
