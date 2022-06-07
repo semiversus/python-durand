@@ -18,7 +18,7 @@ class StateEnum(IntEnum):
     PRE_OPERATIONAL = 127
 
 
-class NMTService:
+class NMTSlave:
     def __init__(self, node: "Node"):
         self._node = node
         self.pending_node_id = node.node_id

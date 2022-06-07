@@ -17,7 +17,7 @@ class LSSState(IntEnum):
     CONFIGURATION = 1
 
 
-class LSS:
+class LSSSlave:
     def __init__(self, node: "Node"):
         self._node = node
 
@@ -53,9 +53,9 @@ class LSS:
         cs = msg[0]
 
         if self._state == LSSState.WAITING:
-            method = LSS._waiting_cs_dict.get(cs, None)
+            method = LSSSlave._waiting_cs_dict.get(cs, None)
         else:
-            method = LSS._configuration_cs_dict.get(cs, None)
+            method = LSSSlave._configuration_cs_dict.get(cs, None)
 
         if method is None:
             return
