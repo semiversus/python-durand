@@ -41,13 +41,13 @@ Feature List
   * dynamically generation of EDS file
   * automatically provided via object 0x1021 ("Store EDS")
 
-* 128 SDO servers by default (can be reduced to 1)
+* up to 128 SDO servers
 
   * expetited, segmented and block transfer for up- and download
   * COB-IDs dynamically configurable
   * custom up- and download handlers supported
 
-* 512 TPDOs and 512 RPDOs by default (can be reduced to 0)
+* up to 512 TPDOs and 512 RPDOs
 
   * dynamically configurable
   * transmission types: synchronous (acyclic and every nth sync) and event driven
@@ -77,6 +77,11 @@ Feature List
   * fast scan supported
   * bitrate and node id configuring supported
   * identify remote responder supported
+
+* CAN interface abstraction
+  
+  * python-can_ fully supported
+  * automatic CAN id filtering by subscripted services
 
 * Scheduling supporting threaded and async operation
 
