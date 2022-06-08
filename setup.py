@@ -13,7 +13,7 @@ with open('README.rst', 'rb') as readme_file:
 setup(
     name='durand',
     use_scm_version={"write_to": "src/durand/_version.py"},
-    description='CANopen library providing functionality to implement slave nodes',
+    description='CANopen library providing functionality to implement responder nodes',
     long_description=readme,
     long_description_content_type='text/x-rst',
     url='https://github.com/semiversus/python-durand',

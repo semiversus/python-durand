@@ -1,8 +1,8 @@
-============================================
-Python Durand - CANopen Slave Device Library
-============================================
+================================================
+Python Durand - CANopen Responder Device Library
+================================================
 
-CANopen library to implement slave nodes.
+CANopen library to implement responder nodes.
 
 Backends:
 
@@ -67,7 +67,7 @@ Feature List
   * boot-up service
   * callback for state change provided
 
-* SYNC (slave) service
+* SYNC (responder) service
 
   * COB-ID dynamically configurable
   * callback for received sync provided
@@ -76,7 +76,7 @@ Feature List
 
   * fast scan supported
   * baudrate and node id configuring supoorted
-  * identify remote slave supported
+  * identify remote responder supported
 
 * Scheduling supporting threaded and async operation
 

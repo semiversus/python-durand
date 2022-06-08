@@ -24,7 +24,7 @@ class LSS:
         self._state = LSSState.WAITING
 
         self._received_selective_address: List[Optional[int]] = [None] * 4
-        self._remote_slave_address: List[Optional[int]] = [None] * 6
+        self._remote_responder_address: List[Optional[int]] = [None] * 6
         self._fastscan_state = 0
 
         self._pending_baudrate = None
@@ -147,30 +147,30 @@ class LSS:
         # store configuration is not supported
         self._node.network.send(0x7E4, b"\x17\x01" + bytes(6))
 
-    def cmd_identify_remote_slaves(self, msg: bytes):
+    def cmd_identify_remote_responders(self, msg: bytes):
         index = msg[0] - 0x46
         value = int.from_bytes(msg[1:5], "little")
-        self._remote_slave_address[index] = value
+        self._remote_responder_address[index] = value
 
-        if None in self._remote_slave_address:
+        if None in self._remote_responder_address:
             return
 
         vendor, product, revision, serial = self._get_own_address()
 
         if (
-            vendor == self._remote_slave_address[0]
-            and product == self._remote_slave_address[1]
-            and self._remote_slave_address[2]
+            vendor == self._remote_responder_address[0]
+            and product == self._remote_responder_address[1]
+            and self._remote_responder_address[2]
             <= revision
-            <= self._remote_slave_address[3]
-            and self._remote_slave_address[4] <= serial <= self._remote_slave_address[5]
+            <= self._remote_responder_address[3]
+            and self._remote_responder_address[4] <= serial <= self._remote_responder_address[5]
         ):
 
             self._node.network.send(0x7E4, b"\x47" + bytes(7))
 
-        self._remote_slave_address = [None] * 6
+        self._remote_responder_address = [None] * 6
 
-    def cmd_identify_nonconfigured_remote_slaves(self, _msg: bytes):
+    def cmd_identify_nonconfigured_remote_responders(self, _msg: bytes):
         if self._node.node_id == 0xFF:
             self._node.network.send(0x7E4, b"\x50" + bytes(7))
 
@@ -207,13 +207,13 @@ class LSS:
         0x41: cmd_switch_mode_selective,
         0x42: cmd_switch_mode_selective,
         0x43: cmd_switch_mode_selective,
-        0x46: cmd_identify_remote_slaves,
-        0x47: cmd_identify_remote_slaves,
-        0x48: cmd_identify_remote_slaves,
-        0x49: cmd_identify_remote_slaves,
-        0x4A: cmd_identify_remote_slaves,
-        0x4B: cmd_identify_remote_slaves,
-        0x4C: cmd_identify_nonconfigured_remote_slaves,
+        0x46: cmd_identify_remote_responders,
+        0x47: cmd_identify_remote_responders,
+        0x48: cmd_identify_remote_responders,
+        0x49: cmd_identify_remote_responders,
+        0x4A: cmd_identify_remote_responders,
+        0x4B: cmd_identify_remote_responders,
+        0x4C: cmd_identify_nonconfigured_remote_responders,
         0x51: cmd_fastscan,
     }
 
@@ -223,13 +223,13 @@ class LSS:
         0x13: cmd_configure_bit_timing,
         0x15: cmd_activate_bit_timing,
         0x17: cmd_store_configuration,
-        0x46: cmd_identify_remote_slaves,
-        0x47: cmd_identify_remote_slaves,
-        0x48: cmd_identify_remote_slaves,
-        0x49: cmd_identify_remote_slaves,
-        0x4A: cmd_identify_remote_slaves,
-        0x4B: cmd_identify_remote_slaves,
-        0x4C: cmd_identify_nonconfigured_remote_slaves,
+        0x46: cmd_identify_remote_responders,
+        0x47: cmd_identify_remote_responders,
+        0x48: cmd_identify_remote_responders,
+        0x49: cmd_identify_remote_responders,
+        0x4A: cmd_identify_remote_responders,
+        0x4B: cmd_identify_remote_responders,
+        0x4C: cmd_identify_nonconfigured_remote_responders,
         0x51: cmd_fastscan,
         0x5A: cmd_inquire_identity,
         0x5B: cmd_inquire_identity,
