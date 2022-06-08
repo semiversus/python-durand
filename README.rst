@@ -82,6 +82,9 @@ Feature List
 
 TODO
   * build object dictionary via reading an EDS file
+  * supporting MPDOs
+  * TIME consumer service
+  * Up- and download handler as io streams
 
 Examples
 ========
