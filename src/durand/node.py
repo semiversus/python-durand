@@ -6,10 +6,10 @@ from .object_dictionary import ObjectDictionary
 from .services.sdo import SDOServer
 from .services.pdo import TPDO, RPDO
 from .eds import EDS
-from .services.nmt import NMTService, StateEnum
-from .services.lss import LSS
-from .services.sync import Sync
-from .services.emcy import EMCY
+from .services.nmt import NMTSlave, StateEnum
+from .services.lss import LSSSlave
+from .services.sync import SyncConsumer
+from .services.emcy import EMCYProducer
 from .services.heartbeat import HeartbeatProducer
 from .object_dictionary import Variable, Record
 from .datatypes import DatatypeEnum as DT
@@ -40,8 +40,8 @@ class Node:
         self.object_dictionary = od
         self.eds = EDS(self)
 
-        self.nmt = NMTService(self)
-        self.sync = Sync(self)
+        self.nmt = NMTSlave(self)
+        self.sync = SyncConsumer(self)
 
         self.tpdo = [TPDO(self, i) for i in range(capabilities.tpdos)]
         self.rpdo = [RPDO(self, i) for i in range(capabilities.rpdos)]
@@ -59,8 +59,8 @@ class Node:
             self.sdo_servers.append(SDOServer(self, index))
 
         self.heartbeat_producer = HeartbeatProducer(self)
-        self.lss = LSS(self)
-        self.emcy = EMCY(self)
+        self.lss = LSSSlave(self)
+        self.emcy = EMCYProducer(self)
 
         od[0x1000] = Variable(DT.UNSIGNED32, "ro", 0, name="Device Type")
 

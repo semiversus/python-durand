@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from durand.node import Node
 
 
-class EMCY:
+class EMCYProducer:
     def __init__(self, node: "Node"):
         self._node = node
 

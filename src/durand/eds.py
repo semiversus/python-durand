@@ -166,7 +166,8 @@ class EDS:
 
         return content
 
-    def extract_objects(self, d: dict, indices: list) -> dict:
+    @staticmethod
+    def extract_objects(d: dict, indices: list) -> dict:
         extracted_dict = {index: obj for index, obj in d.items() if index in indices}
         for index in indices:
             d.pop(index, None)

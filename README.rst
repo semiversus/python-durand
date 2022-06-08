@@ -43,7 +43,7 @@ Feature List
 
 * 128 SDO servers by default (can be reduced to 1)
 
-  * expitited, segmented and block transfer for up- and download
+  * expetited, segmented and block transfer for up- and download
   * COB-IDs dynamically configurable
   * custom up- and download handlers supported
 
@@ -51,23 +51,23 @@ Feature List
 
   * dynamically configurable
   * transmission types: synchronous (acyclic and every nth sync) and event driven
-  * inhibit time supoorted
+  * inhibit time supported
 
-* EMCY service
+* EMCY producer service
 
   * COB-ID dynamically configurable
   * inhibit time supported
 
-* Producer Heartbeat service
+* Heartbeat producer service
 
   * dynamically configurable
 
-* NMT service
+* NMT slave service
 
   * boot-up service
   * callback for state change provided
 
-* SYNC (responder) service
+* SYNC consumer service
 
   * COB-ID dynamically configurable
   * callback for received sync provided
@@ -75,13 +75,16 @@ Feature List
 * CiA305 Layer Setting Service
 
   * fast scan supported
-  * baudrate and node id configuring supoorted
+  * bitrate and node id configuring supported
   * identify remote responder supported
 
 * Scheduling supporting threaded and async operation
 
 TODO
   * build object dictionary via reading an EDS file
+  * supporting MPDOs
+  * TIME consumer service
+  * Up- and download handler as io streams
 
 Examples
 ========
@@ -120,7 +123,7 @@ Adding objects
 Access values
 -------------
 
-The objects can be read and written directly by accesing the object dictionary:
+The objects can be read and written directly by accessing the object dictionary:
 
 .. code-block:: python
 

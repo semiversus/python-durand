@@ -1,5 +1,5 @@
 import struct
-from typing import Tuple, Optional
+from typing import Optional
 from abc import ABCMeta, abstractmethod
 from binascii import crc_hqx
 
@@ -166,6 +166,9 @@ class UploadManager:
     def init_upload(self, msg: bytes):
         if self._state != TransferState.NONE:
             self._abort()
+
+        if msg[0] & 0x03 != 0:
+            raise SDODomainAbort(0x05040001)  # wrong cs
 
         cmd, index, subindex = SDO_STRUCT.unpack(msg[:4])
 

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from durand.node import Node
 
 
-class Sync:
+class SyncConsumer:
     """This service is listening on a specified COB ID for sync messages
 
     Other services can register callbacks to sync messages via Sync.callbacks (CallbackHandler)
