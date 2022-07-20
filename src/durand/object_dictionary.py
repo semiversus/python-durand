@@ -189,6 +189,17 @@ class ObjectDictionary:
             return obj[subindex]
 
     def write(self, index: int, subindex: int, value: Any, downloaded: bool = False):
+        """ Write the given value to the according variable.
+        WARNING: The datatype and range has to be checked before calling this function!
+
+        :param index: object index
+        :param subindex: subindex in record or array
+        :param value: value to be written
+        :param downloaded: flag is set, when the write is caused by an actual download
+                           (instead of a internal value change)
+        """
+        assert isinstance(value, (bytes, int, float)), 'Only bytes, int or float are allowed in object dictionary'
+
         if index in self._variables:
             multiplexor = (index, 0)
         else:
