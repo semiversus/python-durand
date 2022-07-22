@@ -113,7 +113,7 @@ class PDOBase:
             # TODO: check if variable.size is None
             # TODO: check if overall size <= 8
             assert variable.size is not None
-            value = (index << 16) + (subindex << 8) + variable.size
+            value = (index << 16) + (subindex << 8) + (variable.size * 8)
             self._node.object_dictionary.write(
                 self.MAPPING_ARRAY_INDEX + self._index, _entry + 1, value
             )
