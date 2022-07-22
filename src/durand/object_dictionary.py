@@ -198,7 +198,7 @@ class ObjectDictionary:
         :param downloaded: flag is set, when the write is caused by an actual download
                            (instead of a internal value change)
         """
-        assert isinstance(value, (bytes, int, float)), 'Only bytes, int or float are allowed in object dictionary'
+        assert isinstance(value, (bytes, bool, int, float)), 'Only bytes, bool, int or float are allowed in object dictionary'
 
         if index in self._variables:
             multiplexor = (index, 0)

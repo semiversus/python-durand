@@ -214,7 +214,7 @@ class EDS:
 
     def describe_object(self, index: int, obj) -> str:
         if isinstance(obj, Variable):
-            return self.describe_variable(index, 0, obj)
+            return self.describe_variable(index, None, obj)
 
         content = f"[{index:04X}]\nSubNumber={len(obj)}\n"
 
