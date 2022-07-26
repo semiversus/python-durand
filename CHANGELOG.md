@@ -1,3 +1,7 @@
+# 0.4.5
+
+* fix unit tests for LSS
+
 # 0.4.4
 
 * fix SDO server startup when entering OPERATIONAL directly
