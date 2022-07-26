@@ -45,7 +45,7 @@ class LSSSlave:
         lss_address = [None] * 4
 
         for index in range(4):
-            lss_address[index] = self._node.object_dictionary.read((0x1018, index + 1))
+            lss_address[index] = self._node.object_dictionary.read(0x1018, index + 1)
 
         return lss_address
 
