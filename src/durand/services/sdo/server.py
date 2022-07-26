@@ -93,7 +93,7 @@ class SDOServer:
         return self._node
 
     def _update_subscription(self, state: StateEnum):
-        if not self._stopped and state == StateEnum.STOPPED:
+        if not self._stopped and state in (StateEnum.STOPPED, StateEnum.INITIALISATION):
             self._node.network.remove_subscription(self._cob_rx)
             self._stopped = True
             return
@@ -107,7 +107,7 @@ class SDOServer:
             self._stopped = False
 
     def _update_node(self, state: StateEnum):
-        if not self._stopped and state == StateEnum.STOPPED:
+        if not self._stopped and state in (StateEnum.STOPPED, StateEnum.INITIALISATION):
             self._node.network.remove_subscription(self._cob_rx)
             self._stopped = True
             return
