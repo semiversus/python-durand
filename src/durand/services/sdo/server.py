@@ -1,6 +1,6 @@
 import struct
 from enum import Enum
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 import logging
 
 from durand.datatypes import DatatypeEnum as DT
@@ -32,6 +32,7 @@ class SDOServer:
     def __init__(self, node: "Node", index=0):
         self._node = node
         self._index = index
+        self._stopped = True
 
         from .download import DownloadManager
         from .upload import UploadManager
@@ -84,7 +85,7 @@ class SDOServer:
             2: self.upload_manager.init_upload,
             3: self.upload_manager.upload_segment,
             5: self.upload_manager.init_upload,
-            6: self._handle_download_block
+            6: self._handle_download_block,
         }
 
     @property
@@ -92,20 +93,33 @@ class SDOServer:
         return self._node
 
     def _update_subscription(self, state: StateEnum):
-        if state == StateEnum.STOPPED:
+        if not self._stopped and state == StateEnum.STOPPED:
             self._node.network.remove_subscription(self._cob_rx)
-        elif state == StateEnum.PRE_OPERATIONAL and not (
-            self._cob_rx | self._cob_tx
-        ) & (1 << 31):
+            self._stopped = True
+            return
+
+        if (
+            self._stopped
+            and state in (StateEnum.PRE_OPERATIONAL, StateEnum.OPERATIONAL)
+            and not (self._cob_rx | self._cob_tx) & (1 << 31)
+        ):
             self._node.network.add_subscription(self._cob_rx, self.handle_msg)
+            self._stopped = False
 
     def _update_node(self, state: StateEnum):
-        if state == StateEnum.STOPPED:
+        if not self._stopped and state == StateEnum.STOPPED:
             self._node.network.remove_subscription(self._cob_rx)
-        elif state == StateEnum.PRE_OPERATIONAL:
+            self._stopped = True
+            return
+
+        if self._stopped and state in (
+            StateEnum.PRE_OPERATIONAL,
+            StateEnum.OPERATIONAL,
+        ):
             self._cob_rx = 0x600 + self._node.node_id
             self._cob_tx = 0x580 + self._node.node_id
             self._node.network.add_subscription(self._cob_rx, self.handle_msg)
+            self._stopped = False
 
     def _update_cob_rx(self, value: int):
         # bit 31: 0 - valid, 1 - invalid
@@ -182,7 +196,7 @@ class SDOServer:
             try:
                 return self._handle_cs_dict[ccs](msg)
             except KeyError as exc:  # ccs not found
-                raise SDODomainAbort(0x05040001) from exc # SDO command not implemented
+                raise SDODomainAbort(0x05040001) from exc  # SDO command not implemented
         except SDODomainAbort as exc:
             index, subindex = 0, 0
             if exc.multiplexor:
