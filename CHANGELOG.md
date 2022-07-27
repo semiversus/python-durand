@@ -1,3 +1,7 @@
+# 0.4.6
+
+* fix object_dictionary.read in LSS service
+
 # 0.4.5
 
 * fix unit tests for LSS
