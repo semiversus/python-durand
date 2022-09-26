@@ -33,6 +33,9 @@ class AbstractScheduler(Generic[TEntry], metaclass=ABCMeta):
     @abstractmethod
     def lock(self):
         """A global lock which can be used the assure thread safety"""
+    
+    def shutdown(self):
+        """ Shutting down the scheduler """
 
 
 class AsyncScheduler(AbstractScheduler):
@@ -56,6 +59,8 @@ class AsyncScheduler(AbstractScheduler):
     @property
     def lock(self):
         return self._lock
+    
+    # nothing happens at shutdown, as no resources have to be freed
 
 
 class SyncScheduler(AbstractScheduler):
@@ -65,6 +70,7 @@ class SyncScheduler(AbstractScheduler):
         self._lock = lock
         self._sched = sched.scheduler()
         self._wake_up = threading.Event()
+        self._stop = False
 
     def add(
         self, delay: float, callback, args=(), kwargs=None
@@ -82,10 +88,17 @@ class SyncScheduler(AbstractScheduler):
             self._sched.run()
             self._wake_up.wait()
             self._wake_up.clear()
+            with self._lock:
+                if self._stop:
+                    break
 
     @property
     def lock(self):
         return self._lock
+    
+    def shutdown(self):
+        self._wake_up.set()
+        self._stop = True
 
 
 class VirtualScheduler(AbstractScheduler):

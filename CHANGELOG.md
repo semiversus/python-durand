@@ -1,3 +1,7 @@
+# 0.4.7
+
+* adding .shutdown method to schedulers
+
 # 0.4.6
 
 * fix object_dictionary.read in LSS service
