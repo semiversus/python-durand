@@ -38,7 +38,7 @@ class CANBusNetwork(NetworkABC):
         self.subscriptions: Dict[int, Callable[[int, bytes], None]] = {}
 
         listener = NodeListener(self)
-        can.Notifier(self._bus, (listener,), 1, self._loop)
+        self._notifier = can.Notifier(self._bus, (listener,), 1, self._loop)
 
     def add_subscription(self, cob_id: int, callback):
         with self.lock:
@@ -58,6 +58,9 @@ class CANBusNetwork(NetworkABC):
     def send(self, cob_id: int, msg: bytes):
         msg = can.Message(arbitration_id=cob_id, data=msg, is_extended_id=False)
         self._bus.send(msg)
+    
+    def stop(self):
+        self._notifier.stop()
 
 
 class NodeListener(can.Listener):

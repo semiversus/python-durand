@@ -1,3 +1,8 @@
+# 0.4.8
+
+* adding .stop method to CANBusNetwork
+* remove .shutdown method from scheduler base class and add .stop to SyncScheduler
+
 # 0.4.7
 
 * adding .shutdown method to schedulers

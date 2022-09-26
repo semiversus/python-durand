@@ -34,9 +34,6 @@ class AbstractScheduler(Generic[TEntry], metaclass=ABCMeta):
     def lock(self):
         """A global lock which can be used the assure thread safety"""
     
-    def shutdown(self):
-        """ Shutting down the scheduler """
-
 
 class AsyncScheduler(AbstractScheduler):
     def __init__(self, loop=None):
@@ -60,8 +57,6 @@ class AsyncScheduler(AbstractScheduler):
     def lock(self):
         return self._lock
     
-    # nothing happens at shutdown, as no resources have to be freed
-
 
 class SyncScheduler(AbstractScheduler):
     def __init__(self, lock: threading.Lock = None):
@@ -96,7 +91,7 @@ class SyncScheduler(AbstractScheduler):
     def lock(self):
         return self._lock
     
-    def shutdown(self):
+    def stop(self):
         self._wake_up.set()
         self._stop = True
 
