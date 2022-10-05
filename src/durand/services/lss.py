@@ -18,10 +18,11 @@ class LSSState(IntEnum):
 
 
 def check_length(length: int):
-    def wrap(cmd_function):
+    """ Decorator for cmd_ methods checking the expected packet length """
+    def wrap(cmd_method):
         def wrapped_cmd(self, msg: bytes):
             if len(msg) == length:
-                return cmd_function(self, msg)
+                return cmd_method(self, msg)
             log.info('LSS got packet with wrong length {msg!r}, expected {length} bytes')
         return wrapped_cmd
     return wrap
