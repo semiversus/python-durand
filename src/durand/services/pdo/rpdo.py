@@ -77,12 +77,19 @@ class RPDO(PDOBase):
         if self._unpack_function is not None:
             return
 
+        expected_size = 0
         variables = []
+
         for multiplexor in self._multiplexors:
             variable = self._node.object_dictionary.lookup(*multiplexor)
             variables.append(variable)
+            expected_size += variable.size
 
         def unpack(data: bytes):
+            if len(data) != expected_size:
+                self.node.emcy.set(0x8210, 0)  # EMCY for RPDO with wrong size
+                return
+
             values = []
             for variable in variables:
                 values.append(variable.unpack(data[: variable.size]))
@@ -116,6 +123,9 @@ class RPDO(PDOBase):
     def _write_data(self, msg: bytes):
         assert self._unpack_function is not None, "RPDO should be deactivated"
         values = self._unpack_function(msg)
+
+        if values is None:
+            return
 
         for multiplexor, value in zip(self._multiplexors, values):
             try:
