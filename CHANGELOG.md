@@ -1,3 +1,7 @@
+# next release
+
+* harding stack by checking message length
+
 # 0.4.8
 
 * adding .stop method to CANBusNetwork

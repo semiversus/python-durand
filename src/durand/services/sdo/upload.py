@@ -179,6 +179,11 @@ class UploadManager:
             msg[5] == 0 or size is None or size > msg[5]
         ):  # ccs=5, cs=0 -> block upload
             # msg[5] is protocol switching threshold
+            if msg[4] == 0 or msg[4] > 127:
+                self._stream.abort()
+                self._stream = None
+                raise SDODomainAbort(0x05040002, (index, subindex))  # invalid block size
+
             self._state = TransferState.BLOCK
             self._crc = 0 if msg[0] & 0x04 else None
 
@@ -257,7 +262,7 @@ class UploadManager:
             self._state = TransferState.NONE
             return
 
-        if msg[0] & 0x03 == 2:
+        if msg[0] & 0x03 == 2:  # block end
             data = self._stream.read(msg[1] * 7)
             if self._crc is not None:
                 self._crc = crc_hqx(data, self._crc)

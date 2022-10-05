@@ -3,8 +3,12 @@
 from abc import ABCMeta, abstractmethod
 from typing import Dict, Callable
 from threading import Lock
+import logging
 
 import can  # type: ignore
+
+
+log = logging.getLogger(__name__)
 
 
 class NetworkABC(metaclass=ABCMeta):
@@ -78,4 +82,7 @@ class NodeListener(can.Listener):
         if not callback:
             return
 
-        callback(msg.arbitration_id, msg.data)
+        try:
+            callback(msg.arbitration_id, msg.data)
+        except Exception as e:
+            log.exception(f'{e!r} while processing {msg!r}')

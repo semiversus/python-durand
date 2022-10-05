@@ -183,6 +183,9 @@ class SDOServer:
         ), "Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})"
 
         try:
+            if len(msg) != 8:
+                raise SDODomainAbort(0x08000000)
+                
             ccs = (msg[0] & 0xE0) >> 5
 
             if msg[0] == 0x80:  # abort
