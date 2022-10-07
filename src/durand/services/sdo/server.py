@@ -182,10 +182,7 @@ class SDOServer:
             cob_id == self._cob_rx
         ), "Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})"
 
-        try:
-            if len(msg) != 8:
-                raise SDODomainAbort(0x08000000)
-                
+        try:    
             ccs = (msg[0] & 0xE0) >> 5
 
             if msg[0] == 0x80:  # abort
@@ -208,9 +205,13 @@ class SDOServer:
             response += struct.pack("<I", exc.code)
             self._node.network.send(self._cob_tx, response)
         except Exception as exc:
-            _, index, subindex = SDO_STRUCT.unpack(msg[:4])
+            if len(msg) >= 4:
+                _, index, subindex = SDO_STRUCT.unpack(msg[:4])
+            else:
+                index, subindex = (0,0)
+                
             # TODO: use index, subindex only when available in msg
-            log.exception("Exception during processing %r", msg)
+            log.debug(f"{exc!r} during processing {msg!r}")
 
             response = SDO_STRUCT.pack(0x80, index, subindex) + b"\x00\x00\x00\x08"
             self._node.network.send(self._cob_tx, response)  # report general error

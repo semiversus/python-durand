@@ -33,7 +33,7 @@ class NMTSlave:
 
     def handle_msg(self, _cob_id: int, msg: bytes):
         if len(msg) != 2:
-            log.info(f'NMT got packet with wrong length {msg!r}')
+            log.debug(f'NMT got packet with wrong length {msg!r}')
             return
 
         cs, node_id = msg[:2]
@@ -51,7 +51,7 @@ class NMTSlave:
             self.set_state(StateEnum.INITIALISATION)
             self.set_state(StateEnum.PRE_OPERATIONAL)
         else:
-            log.info("Unknown NMT command specifier 0x%02X", cs)
+            log.debug("Unknown NMT command specifier 0x%02X", cs)
 
     def reset(self):
         self.set_state(StateEnum.INITIALISATION)

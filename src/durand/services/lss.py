@@ -17,17 +17,6 @@ class LSSState(IntEnum):
     CONFIGURATION = 1
 
 
-def check_length(length: int):
-    """ Decorator for cmd_ methods checking the expected packet length """
-    def wrap(cmd_method):
-        def wrapped_cmd(self, msg: bytes):
-            if len(msg) == length:
-                return cmd_method(self, msg)
-            log.info('LSS got packet with wrong length {msg!r}, expected {length} bytes')
-        return wrapped_cmd
-    return wrap
-
-
 class LSSSlave:
     def __init__(self, node: "Node"):
         self._node = node
@@ -62,7 +51,7 @@ class LSSSlave:
 
     def handle_msg(self, _cob_id: int, msg: bytes):
         if len(msg) < 1:
-            log.info(f'LSS got packet with wrong length {msg!r}')
+            log.debug(f'LSS got packet with wrong length {msg!r}')
             return
 
         cs = msg[0]
@@ -75,16 +64,17 @@ class LSSSlave:
         if method is None:
             return
 
-        method(self, msg)
+        try:
+            method(self, msg)
+        except (IndexError, struct.error):
+            log.debug(f'LSS got packet with wrong length {msg!r}')
 
-    @check_length(2)
     def cmd_switch_mode_global_configuration(self, msg: bytes):
         if msg[1] != 1:  # check if requested mode is CONFIGURATION
             return
 
         self._state = LSSState.CONFIGURATION
 
-    @check_length(2)
     def cmd_switch_mode_global_waiting(self, msg: bytes):
         if msg[1] != 0:  # check if requested mode is WAITING
             return
@@ -94,7 +84,6 @@ class LSSSlave:
 
         self._state = LSSState.WAITING
 
-    @check_length(6)
     def cmd_switch_mode_selective(self, msg: bytes):
         index = msg[0] - 0x40
 
@@ -111,19 +100,16 @@ class LSSSlave:
 
         self._received_selective_address = [None] * 4
 
-    @check_length(1)
     def cmd_inquire_identity(self, msg: bytes):
         index = msg[0] - 0x5A
         value = self._get_own_address()[index]
         self._node.network.send(0x7E4, msg[:1] + value.to_bytes(4, "little") + bytes(3))
 
-    @check_length(1)
     def cmd_inquire_node_id(self, _msg: bytes):
         self._node.network.send(
             0x7E4, b"\x5e" + self._node.node_id.to_bytes(1, "little") + bytes(6)
         )
 
-    @check_length(2)
     def cmd_configure_node_id(self, msg: bytes):
         node_id = msg[1]
 
@@ -137,7 +123,6 @@ class LSSSlave:
             0x7E4, b"\x11" + result.to_bytes(1, "little") + bytes(6)
         )
 
-    @check_length(4)
     def cmd_configure_bit_timing(self, msg: bytes):
         valid_table_entries = (0, 1, 2, 3, 4, 6, 7, 8)
         selector, index = msg[1:3]
@@ -153,7 +138,6 @@ class LSSSlave:
         self._pending_baudrate = index
         self._node.network.send(0x7E4, b"\x13\x00" + bytes(6))
 
-    @check_length(4)
     def cmd_activate_bit_timing(self, msg: bytes):
         delay = int.from_bytes(msg[1:3], "little") / 1000  # [seconds]
 
@@ -166,12 +150,10 @@ class LSSSlave:
         self._pending_baudrate = None
         get_scheduler().add(delay, self._node.nmt.reset)
 
-    @check_length(1)
     def cmd_store_configuration(self, _msg: bytes):
         # store configuration is not supported
         self._node.network.send(0x7E4, b"\x17\x01" + bytes(6))
 
-    @check_length(6)
     def cmd_identify_remote_responders(self, msg: bytes):
         index = msg[0] - 0x46
         value = int.from_bytes(msg[1:5], "little")
@@ -195,12 +177,10 @@ class LSSSlave:
 
         self._remote_responder_address = [None] * 6
 
-    @check_length(1)
     def cmd_identify_nonconfigured_remote_responders(self, _msg: bytes):
         if self._node.node_id == 0xFF:
             self._node.network.send(0x7E4, b"\x50" + bytes(7))
 
-    @check_length(5)
     def cmd_fastscan(self, msg: bytes):
         if self._node.node_id != 0xFF:
             return
