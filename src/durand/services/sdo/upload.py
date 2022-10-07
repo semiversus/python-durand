@@ -182,7 +182,9 @@ class UploadManager:
             if msg[4] == 0 or msg[4] > 127:
                 self._stream.abort()
                 self._stream = None
-                raise SDODomainAbort(0x05040002, (index, subindex))  # invalid block size
+                raise SDODomainAbort(
+                    0x05040002, (index, subindex)
+                )  # invalid block size
 
             self._state = TransferState.BLOCK
             self._crc = 0 if msg[0] & 0x04 else None

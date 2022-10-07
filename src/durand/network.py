@@ -62,7 +62,7 @@ class CANBusNetwork(NetworkABC):
     def send(self, cob_id: int, msg: bytes):
         msg = can.Message(arbitration_id=cob_id, data=msg, is_extended_id=False)
         self._bus.send(msg)
-    
+
     def stop(self):
         self._notifier.stop()
 
@@ -85,4 +85,4 @@ class NodeListener(can.Listener):
         try:
             callback(msg.arbitration_id, msg.data)
         except Exception as e:
-            log.exception(f'{e!r} while processing {msg!r}')
+            log.exception(f"{e!r} while processing {msg!r}")

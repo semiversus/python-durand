@@ -33,7 +33,7 @@ class AbstractScheduler(Generic[TEntry], metaclass=ABCMeta):
     @abstractmethod
     def lock(self):
         """A global lock which can be used the assure thread safety"""
-    
+
 
 class AsyncScheduler(AbstractScheduler):
     def __init__(self, loop=None):
@@ -56,7 +56,7 @@ class AsyncScheduler(AbstractScheduler):
     @property
     def lock(self):
         return self._lock
-    
+
 
 class SyncScheduler(AbstractScheduler):
     def __init__(self, lock: threading.Lock = None):
@@ -90,7 +90,7 @@ class SyncScheduler(AbstractScheduler):
     @property
     def lock(self):
         return self._lock
-    
+
     def stop(self):
         self._wake_up.set()
         self._stop = True

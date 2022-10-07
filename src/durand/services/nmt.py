@@ -33,7 +33,7 @@ class NMTSlave:
 
     def handle_msg(self, _cob_id: int, msg: bytes):
         if len(msg) != 2:
-            log.debug(f'NMT got packet with wrong length {msg!r}')
+            log.debug(f"NMT got packet with wrong length {msg!r}")
             return
 
         cs, node_id = msg[:2]

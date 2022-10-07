@@ -51,7 +51,7 @@ class LSSSlave:
 
     def handle_msg(self, _cob_id: int, msg: bytes):
         if len(msg) < 1:
-            log.debug(f'LSS got packet with wrong length {msg!r}')
+            log.debug(f"LSS got packet with wrong length {msg!r}")
             return
 
         cs = msg[0]
@@ -67,7 +67,7 @@ class LSSSlave:
         try:
             method(self, msg)
         except (IndexError, struct.error):
-            log.debug(f'LSS got packet with wrong length {msg!r}')
+            log.debug(f"LSS got packet with wrong length {msg!r}")
 
     def cmd_switch_mode_global_configuration(self, msg: bytes):
         if msg[1] != 1:  # check if requested mode is CONFIGURATION
@@ -170,7 +170,9 @@ class LSSSlave:
             and self._remote_responder_address[2]
             <= revision
             <= self._remote_responder_address[3]
-            and self._remote_responder_address[4] <= serial <= self._remote_responder_address[5]
+            and self._remote_responder_address[4]
+            <= serial
+            <= self._remote_responder_address[5]
         ):
 
             self._node.network.send(0x7E4, b"\x47" + bytes(7))

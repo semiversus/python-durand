@@ -182,7 +182,7 @@ class SDOServer:
             cob_id == self._cob_rx
         ), "Cob RX id invalid (0x{cob_id:X}, expected 0x{self._cob_rx:X})"
 
-        try:    
+        try:
             ccs = (msg[0] & 0xE0) >> 5
 
             if msg[0] == 0x80:  # abort
@@ -208,8 +208,8 @@ class SDOServer:
             if len(msg) >= 4:
                 _, index, subindex = SDO_STRUCT.unpack(msg[:4])
             else:
-                index, subindex = (0,0)
-                
+                index, subindex = (0, 0)
+
             # TODO: use index, subindex only when available in msg
             log.debug(f"{exc!r} during processing {msg!r}")
 
