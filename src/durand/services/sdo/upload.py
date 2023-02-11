@@ -199,7 +199,7 @@ class UploadManager:
             )
             return
 
-        if size is not None and size <= 4:
+        if size is not None and 1 <= size <= 4:
             # make an expetited transfer
             data = self._stream.read(4)
             self._stream.release()

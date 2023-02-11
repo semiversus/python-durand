@@ -1,3 +1,7 @@
+# next release
+
+* fix upload of objects with size 0 (use segmented transfer instead of expetited)
+
 # 0.4.9
 
 * harding stack by checking message length

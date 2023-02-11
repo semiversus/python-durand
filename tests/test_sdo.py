@@ -668,7 +668,7 @@ class UploadHandler(BaseUploadHandler):
 
 
 @pytest.mark.parametrize("with_handler", [True, False])
-@pytest.mark.parametrize("size", [1, 2, 6, 7, 8, 14, 100])
+@pytest.mark.parametrize("size", [0, 1, 2, 6, 7, 8, 14, 100])
 @pytest.mark.parametrize("with_pst", [True, False])  # protocol switching threshold
 def test_upload_segmented_various_length(with_handler, size, with_pst):
     network = MockNetwork()
@@ -688,14 +688,14 @@ def test_upload_segmented_various_length(with_handler, size, with_pst):
 
     if with_pst:
         network.receive(
-            0x602, struct.pack("<BHBBBH", 0xA0, 0x2000, 0, 127, size, 0)
+            0x602, struct.pack("<BHBBBH", 0xA0, 0x2000, 0, 127, max(1, size), 0)
         )  # init block upload with protocol switching threshold
     else:
         network.receive(
             0x602, build_sdo_packet(cs=2, index=0x2000)
         )  # init segmented upload
 
-    if size <= 4:
+    if 1 <= size <= 4:
         cmd = 0x43 + ((4 - size) << 2)
         data = b"\xAA" * size + bytes(4 - size)
         network.tx_mock.assert_called_with(
@@ -725,13 +725,20 @@ def test_upload_segmented_various_length(with_handler, size, with_pst):
         0x602, cmd.to_bytes(1, "little") + b"\x00\x20\x00\x00\x00\x00\x00"
     )  # request last segment
 
-    cmd = 0x01 + ((6 - ((size - 1) % 7)) << 1) + (toggle << 4)
-    network.tx_mock.assert_called_with(
-        0x582,
-        cmd.to_bytes(1, "little")
-        + b"\xAA" * ((size - 1) % 7 + 1)
-        + b"\x00" * (6 - (size - 1) % 7),
-    )  # response for last segment
+    if size:
+        cmd = 0x01 + ((6 - ((size - 1) % 7)) << 1) + (toggle << 4)
+
+        network.tx_mock.assert_called_with(
+            0x582,
+            cmd.to_bytes(1, "little")
+            + b"\xAA" * ((size - 1) % 7 + 1)
+            + b"\x00" * (6 - (size - 1) % 7),
+        )  # response for last segment
+    else:
+        network.tx_mock.assert_called_with(
+            0x582,
+            b"\x0F" + b"\x00" * 7,
+        )  # response for last segment
 
 
 @pytest.mark.parametrize("with_handler", [True, False])
