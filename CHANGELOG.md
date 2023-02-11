@@ -1,5 +1,4 @@
-# next release
-
+# 0.4.10
 * fix upload of objects with size 0 (use segmented transfer instead of expetited)
 
 # 0.4.9
