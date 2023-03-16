@@ -4,7 +4,7 @@ from typing import Any, Dict, Tuple, Callable, Union, Optional
 import itertools
 import logging
 
-from .datatypes import DatatypeEnum, struct_dict, is_numeric, is_float
+from .datatypes import DatatypeEnum, struct_dict, is_numeric, is_float, range_dict
 from .callback_handler import CallbackHandler, FailMode
 
 
@@ -27,14 +27,35 @@ class Variable:
     def __post_init__(self):
         if self.datatype not in DatatypeEnum:
             raise ValueError("Unsupported datatype")
+
         if self.access not in ("rw", "ro", "wo", "const"):
             raise ValueError("Invalid access type")
+
         if not is_numeric(self.datatype) and (
             self.maximum is not None or self.minimum is not None
         ):
             raise ValueError(
                 f"Minimum and Maximum not available with datatype {self.datatype!r}"
             )
+
+        if range_dict.get(self.datatype, None) is not None:
+            minimum, maximum = range_dict[self.datatype]
+
+            if self.minimum is not None and self.minimum < minimum:
+                raise ValueError(
+                    f"Specified minimum of {self.minimum} is lower than datatype supported minimum of {minimum}"
+                )
+
+            if self.maximum is not None and self.maximum > maximum:
+                raise ValueError(
+                    f"Specified maximum of {self.maximum} is higher than datatype supported maximum of {maximum}"
+                )
+
+            if self.minimum is None:
+                self.minimum = minimum
+
+            if self.maximum is None:
+                self.maximum = maximum
 
     @property
     def writable(self):
@@ -178,15 +199,27 @@ class ObjectDictionary:
             self._objects[index] = obj
 
     def lookup(self, index: int, subindex: int = None) -> TObject:
+        """Return object on index:subindex in object dictionary. When subindex is None
+        the object is returned. Otherwise a lookup is extended with subindex in the Array/Record.
+
+        :param index: index in object dictionary
+        :param subindex: optional subindex to lookup inside object
+        :returns: the Variable, Record or Array
+
+        :raises KeyError: when object not found in dictionary
+        """
         try:
-            return self._variables[index]
-        except KeyError:
+            if index in self._variables:
+                return self._variables[index]
+
             if subindex is None:
                 return self._objects[index]
 
             obj = self._objects[index]
             assert isinstance(obj, (Record, Array)), "Record or Array expected"
             return obj[subindex]
+        except KeyError:
+            raise KeyError("Object {index}:{subindex} not in object dictionary")
 
     def write(self, index: int, subindex: int, value: Any, downloaded: bool = False):
         """Write the given value to the according variable.
@@ -197,6 +230,9 @@ class ObjectDictionary:
         :param value: value to be written
         :param downloaded: flag is set, when the write is caused by an actual download
                            (instead of a internal value change)
+
+        :raises KeyError: when index:subindex not found
+        :raises Exception: when validate_callback fails
         """
         assert isinstance(
             value, (bytes, bool, int, float)
@@ -206,6 +242,19 @@ class ObjectDictionary:
             multiplexor = (index, 0)
         else:
             multiplexor = (index, subindex)
+
+        variable = self.lookup(*multiplexor)  # check if variable exists
+
+        if not downloaded:
+            if variable.minimum is not None and value < variable.minimum:
+                raise ValueError(
+                    f"Value {value} is too low (minimum is {variable.minimum})"
+                )
+
+            if variable.maximum is not None and value > variable.maximum:
+                raise ValueError(
+                    f"Value {value} is too high (minimum is {variable.maximum})"
+                )
 
         if multiplexor in self.validate_callbacks:
             self.validate_callbacks[multiplexor].call(value)  # may raises exception

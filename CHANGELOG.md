@@ -1,4 +1,10 @@
+# 0.4.11
+
+* check limits for numeric datatypes when using `object_dictionary.write`
+* check if object is existing when using `object_dictionary.write`
+
 # 0.4.10
+
 * fix upload of objects with size 0 (use segmented transfer instead of expetited)
 
 # 0.4.9

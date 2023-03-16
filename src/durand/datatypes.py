@@ -47,3 +47,18 @@ struct_dict = {
     DatatypeEnum.OCTET_STRING: Struct("s"),
     DatatypeEnum.DOMAIN: Struct("s"),
 }
+
+
+range_dict = {
+    DatatypeEnum.BOOLEAN: (0, 1),
+    DatatypeEnum.UNSIGNED8: (0, (2**8) - 1),
+    DatatypeEnum.INTEGER8: (-(2**7), (2**7) - 1),
+    DatatypeEnum.UNSIGNED16: (0, (2**16) - 1),
+    DatatypeEnum.INTEGER16: (-(2**15), (2**15) - 1),
+    DatatypeEnum.UNSIGNED32: (0, (2**32) - 1),
+    DatatypeEnum.INTEGER32: (-(2**31), (2**31) - 1),
+    DatatypeEnum.UNSIGNED64: (0, (2**64) - 1),
+    DatatypeEnum.INTEGER64: (-(2**63), (2**63) - 1),
+    DatatypeEnum.REAL32: (float("-inf"), float("inf")),
+    DatatypeEnum.REAL64: (float("-inf"), float("inf")),
+}
