@@ -1,3 +1,7 @@
+# 0.4.12
+
+* update object dictionary on type change in PDOs
+
 # 0.4.11
 
 * check limits for numeric datatypes when using `object_dictionary.write`

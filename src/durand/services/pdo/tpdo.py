@@ -130,6 +130,8 @@ class TPDO(PDOBase):
 
         self._transmission_type = value
 
+        self._node.object_dictionary.write(0x1800 + self._index, 2, value)
+
     def _update_inhibit_time(self, value: int):
         if self._inhibit_timer:
             self._inhibit_timer.cancel()
@@ -147,7 +149,7 @@ class TPDO(PDOBase):
 
     @inhibit_time.setter
     def inhibit_time(self, value: float):
-        return self._node.object_dictionary.write(
+        self._node.object_dictionary.write(
             0x1800 + self._index, 3, value * 10_000
         )
 

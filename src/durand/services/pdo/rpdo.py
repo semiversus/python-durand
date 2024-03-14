@@ -54,6 +54,7 @@ class RPDO(PDOBase):
     def _set_transmission_type(self, value: int):
         self._deactivate_mapping()
         self._transmission_type = value
+        self._node.object_dictionary.write(0x1400 + self._index, 2, value)
         self._activate_mapping()
 
     def _update_od_cob_id(self):
