@@ -24,13 +24,13 @@ def test_write():
 
     node.object_dictionary.write(0x2000, 0, -32768)
     assert node.object_dictionary.read(0x2000, 0) == -32768
-    
+
     # test too low value
     with pytest.raises(ValueError, match=re.escape('Value -32769 is too low (minimum is -32768)')):
         node.object_dictionary.write(0x2000, 0, value=-32769)
 
     # test too high value
-    with pytest.raises(ValueError, match=re.escape('Value 32768 is too high (minimum is 32767)')):
+    with pytest.raises(ValueError, match=re.escape('Value 32768 is too high (maximum is 32767)')):
         node.object_dictionary.write(0x2000, 0, value=32768)
 
 
@@ -41,6 +41,6 @@ def test_access_of_unknown_variable():
 
     with pytest.raises(KeyError):
         node.object_dictionary.write(0x2000, 0, 5)
-    
+
     with pytest.raises(KeyError):
         node.object_dictionary.read(0x2000, 0)

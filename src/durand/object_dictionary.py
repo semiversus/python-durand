@@ -253,7 +253,7 @@ class ObjectDictionary:
 
             if variable.maximum is not None and value > variable.maximum:
                 raise ValueError(
-                    f"Value {value} is too high (minimum is {variable.maximum})"
+                    f"Value {value} is too high (maximum is {variable.maximum})"
                 )
 
         if multiplexor in self.validate_callbacks:
