@@ -2,9 +2,9 @@
 Python Durand - CANopen Responder Device Library
 ================================================
 
-CANopen library to implement responder nodes.
+A CANopen library to implement responder nodes.
 
-Backends:
+**Backends:**
 
 - CAN interfaces via python-can_
 
@@ -13,12 +13,12 @@ Backends:
 Synopsis
 ========
 
-- Pure python implementation
-- Under MIT license (2021 Günther Jena)
-- Source is hosted on GitHub.com_
-- Tested on Python 3.7, 3.8, 3.9 and 3.10
-- Unit tested with pytest_, coding style done with Black_, static type checked with mypy_, static code checked with Pylint_, documented with Sphinx_
-- Supporting CiA301_ (EN 50325-4)
+- Pure Python implementation
+- Licensed under MIT (2021 Günther Jena)
+- Source code hosted on GitHub.com_
+- Tested on Python 3.7, 3.8, 3.9, and 3.10
+- Unit tested with pytest_, coding style enforced with Black_, static type checking with mypy_, static code analysis with Pylint_, documentation generated with Sphinx_
+- Supports CiA301_ (EN 50325-4)
 
 .. _pytest: https://docs.pytest.org/en/latest
 .. _Black: https://black.readthedocs.io/en/stable/
@@ -31,71 +31,75 @@ Synopsis
 Feature List
 ============
 
-* Object dictionary
+* **Object Dictionary:**
 
-  * provides callbacks for *validation*, *update*, *download* and *read*
-  * supports records, arrays and variables
+  - Provides callbacks for validation, update, download, and read operations
+  - Supports records, arrays, and variables
 
-* EDS support
+* **EDS Support:**
 
-  * dynamically generation of EDS file
-  * automatically provided via object 0x1021 ("Store EDS")
+  - Dynamic generation of EDS files
+  - Automatically provided via object 0x1021 ("Store EDS")
 
-* up to 128 SDO servers
+* **SDO Servers:**
 
-  * expedited, segmented and block transfer for up- and download
-  * COB-IDs dynamically configurable
-  * custom up- and download handlers supported
+  - Supports up to 128 SDO servers
+  - Expedited, segmented, and block transfer for upload and download
+  - Dynamically configurable COB-IDs
+  - Custom upload and download handlers supported
 
-* up to 512 TPDOs and 512 RPDOs
+* **PDO Support:**
 
-  * dynamically configurable
-  * transmission types: synchronous (acyclic and every nth sync) and event driven
-  * inhibit time supported
+  - Up to 512 TPDOs and 512 RPDOs
+  - Dynamically configurable
+  - Transmission types: synchronous (acyclic and every nth sync) and event-driven
+  - Supports inhibit time
 
-* EMCY producer service
+* **EMCY Producer Service:**
 
-  * COB-ID dynamically configurable
-  * inhibit time supported
+  - Dynamically configurable COB-ID
+  - Supports inhibit time
 
-* Heartbeat producer service
+* **Heartbeat Producer Service:**
 
-  * dynamically configurable
+  - Dynamically configurable
 
-* NMT slave service
+* **NMT Slave Service:**
 
-  * boot-up service
-  * callback for state change provided
+  - Boot-up service
+  - Callback for state change provided
 
-* SYNC consumer service
+* **SYNC Consumer Service:**
 
-  * COB-ID dynamically configurable
-  * callback for received sync provided
+  - Dynamically configurable COB-ID
+  - Callback for received sync provided
 
-* CiA305 Layer Setting Service
+* **CiA305 Layer Setting Service:**
 
-  * fast scan supported
-  * bitrate and node id configuring supported
-  * identify remote responder supported
+  - Supports fast scan
+  - Configurable bitrate and node ID
+  - Identify remote responder supported
 
-* CAN interface abstraction
-  
-  * python-can_ fully supported
-  * automatic CAN id filtering by subscripted services
+* **CAN Interface Abstraction:**
 
-* Scheduling supporting threaded and async operation
+  - Full support for python-can_
+  - Automatic CAN ID filtering by subscribed services
 
-TODO
-  * build object dictionary via reading an EDS file
-  * supporting MPDOs
-  * TIME consumer service
-  * Up- and download handler as io streams
+* **Scheduling:**
+
+  - Supports threaded and async operation
+
+**TODO:**
+
+- Build object dictionary via reading an EDS file
+- Support MPDOs
+- TIME consumer service
+- Up- and download handler as I/O streams
 
 Examples
 ========
 
-Creating a node
----------------
+**Creating a Node:**
 
 .. code-block:: python
 
@@ -104,29 +108,26 @@ Creating a node
 
     bus = can.Bus(bustype='socketcan', channel='vcan0')
     network = CANBusNetwork(bus)
-
     node = Node(network, node_id=0x01)
 
-Congratulations! You have a CiA-301 compliant node running. Layer Setting Service is also supported out of the box.
+Congratulations! You now have a CiA-301 compliant node running. The Layer Setting Service is also supported out of the box.
 
-Adding objects
---------------
+**Adding Objects:**
 
 .. code-block:: python
 
     od = node.object_dictionary
 
-    # add variable at index 0x2000
+    # Add variable at index 0x2000
     od[0x2000] = Variable(DatatypeEnum.UNSIGNED16, access='rw', value=10, name='Parameter 1')
 
-    # add record at index 0x2001
+    # Add record at index 0x2001
     record = Record(name='Parameter Record')
     record[1] = Variable(DatatypeEnum.UNSIGNED8, access='ro', value=0, name='Parameter 2a')
     record[2] = Variable(DatatypeEnum.REAL32, access='rw', value=0, name='Parameter 2b')
     od[0x2001] = record
 
-Access values
--------------
+**Accessing Values:**
 
 The objects can be read and written directly by accessing the object dictionary:
 
@@ -135,15 +136,14 @@ The objects can be read and written directly by accessing the object dictionary:
     print(f'Value of Parameter 1: {od.read(0x2000, 0)}')
     od.write(0x2001, 1, value=0xAA)
 
-Add callbacks
--------------
+**Adding Callbacks:**
 
-A more event driven approach is using of callbacks. Following callbacks are available:
+A more event-driven approach is to use callbacks. The following callbacks are available:
 
-* `validate_callbacks` - called before a value in the object dictionary is going to be updated
-* `update_callbacks` - called when the value has been changed (via `od.write` or via CAN bus)
-* `download_callbacks` - called when the value has been changed via CAN bus
-* `read_callback` - called when a object is read (return value is used )
+- `validate_callbacks`: Called before a value in the object dictionary is updated
+- `update_callbacks`: Called when the value has been changed (via `od.write` or via CAN bus)
+- `download_callbacks`: Called when the value has been changed via CAN bus
+- `read_callback`: Called when an object is read (return value is used)
 
 .. code-block:: python
 
@@ -152,22 +152,20 @@ A more event driven approach is using of callbacks. Following callbacks are avai
     od.download_callbacks[(0x2000, 0)].add(lambda v: print(f'Download for Parameter 1: {v}'))
     od.set_read_callback(0x2001, 1, lambda: 17)
 
-PDO mapping
------------
+**PDO Mapping:**
 
-PDOs can dynamically mapped via the SDO server or programmatically. The PDO indices
-start at 0.
+PDOs can be dynamically mapped via the SDO server or programmatically. The PDO indices start at 0.
 
 .. code-block:: python
 
     node.tpdo[0].mapping = [(0x2001, 1), (0x2001, 2)]
-    node.tpdo[0].transmission_type = 1  # transmit on every SYNC
+    node.tpdo[0].transmission_type = 1  # Transmit on every SYNC
 
     node.rpdo[0].mapping = [(0x2000, 0)]
-    node.tpdo[0].transmission_type = 255  # event driven (processed when received)
+    node.tpdo[0].transmission_type = 255  # Event-driven (processed when received)
 
-Install
-=======
+Installation
+============
 
 .. code-block:: bash
 
@@ -178,8 +176,8 @@ Credits
 
 This library would not be possible without:
 
-* python-canopen_: CANopen library (by Christian Sandberg)
-* python-can_: CAN interface library (by Brian Thorne)
+- python-canopen_: CANopen library (by Christian Sandberg)
+- python-can_: CAN interface library (by Brian Thorne)
 
 .. _python-canopen: https://github.com/christiansandberg/canopen
 .. _python-can: https://github.com/hardbyte/python-can
