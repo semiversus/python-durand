@@ -1,4 +1,4 @@
-# 0.4.13
+# 0.5.0
 
 * fix LSS baudrate configuration handling
 * provide LSS store configuration functionality (bitrate and node id)
