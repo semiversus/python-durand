@@ -18,15 +18,15 @@ class LSSState(IntEnum):
 
 
 class LSSSlave:
-    CiA_bit_timing_table = {  # in kBit
-        0: 1000,
-        1: 800,
-        2: 500,
-        3: 250,
-        4: 125,
-        6: 50,
-        7: 20,
-        8: 10,
+    CiA_bit_timing_table = {
+        0: 1000000,
+        1: 800000,
+        2: 500000,
+        3: 250000,
+        4: 125000,
+        6: 50000,
+        7: 20000,
+        8: 10000,
     }
 
     def __init__(self, node: "Node"):
@@ -150,7 +150,7 @@ class LSSSlave:
             self._node.network.send(0x7E4, b"\x13\x01" + bytes(6))
             return
 
-        self._pending_baudrate = self.CiA_bit_timing_table[index] * 1000  # [kBit/s] -> [Bit/s]
+        self._pending_baudrate = self.CiA_bit_timing_table[index]
         self._node.network.send(0x7E4, b"\x13\x00" + bytes(6))
 
     def cmd_activate_bit_timing(self, msg: bytes):
