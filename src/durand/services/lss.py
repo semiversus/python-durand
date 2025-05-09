@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 from enum import IntEnum
 import logging
 import struct
@@ -18,6 +18,17 @@ class LSSState(IntEnum):
 
 
 class LSSSlave:
+    CiA_bit_timing_table = {  # in kBit
+        0: 1000,
+        1: 800,
+        2: 500,
+        3: 250,
+        4: 125,
+        6: 50,
+        7: 20,
+        8: 10,
+    }
+
     def __init__(self, node: "Node"):
         self._node = node
 
@@ -25,16 +36,21 @@ class LSSSlave:
 
         self._received_selective_address: List[Optional[int]] = [None] * 4
         self._remote_responder_address: List[Optional[int]] = [None] * 6
-        self._fastscan_state = 0
+        self._fastscan_state: int = 0
 
-        self._pending_baudrate = None
-        self._change_baudrate_cb = None
+        self._pending_baudrate: int | None = None
+        self._change_baudrate_cb: Callable[[int, float], None] | None = None
+
+        self._store_configuration_cb: Callable[[int, int], None] | None = None
 
         node.network.add_subscription(cob_id=0x7E5, callback=self.handle_msg)
         node.nmt.state_callbacks.add(self.on_nmt_state_update)
 
-    def set_baudrate_change_callback(self, cb):
+    def set_baudrate_change_callback(self, cb: Callable[[int, float], None]):
         self._change_baudrate_cb = cb
+
+    def set_store_configuration_callback(self, cb: Callable[[int, int], None]):
+        self._store_configuration_cb = cb
 
     def on_nmt_state_update(self, state: StateEnum):
         if state == StateEnum.INITIALISATION:
@@ -124,18 +140,17 @@ class LSSSlave:
         )
 
     def cmd_configure_bit_timing(self, msg: bytes):
-        valid_table_entries = (0, 1, 2, 3, 4, 6, 7, 8)
         selector, index = msg[1:3]
 
         if (
             selector != 0
-            or index not in valid_table_entries
+            or index not in self.CiA_bit_timing_table
             or self._change_baudrate_cb is None
         ):
             self._node.network.send(0x7E4, b"\x13\x01" + bytes(6))
             return
 
-        self._pending_baudrate = index
+        self._pending_baudrate = self.CiA_bit_timing_table[index] * 1000  # [kBit/s] -> [Bit/s]
         self._node.network.send(0x7E4, b"\x13\x00" + bytes(6))
 
     def cmd_activate_bit_timing(self, msg: bytes):
@@ -146,13 +161,19 @@ class LSSSlave:
 
     def _change_baudrate(self, delay: float):
         if self._change_baudrate_cb:
-            self._change_baudrate_cb(self._pending_baudrate)
+            self._change_baudrate_cb(self._pending_baudrate, delay)
         self._pending_baudrate = None
-        get_scheduler().add(delay, self._node.nmt.reset)
 
     def cmd_store_configuration(self, _msg: bytes):
-        # store configuration is not supported
-        self._node.network.send(0x7E4, b"\x17\x01" + bytes(6))
+        if self._store_configuration_cb is not None:
+            self._store_configuration_cb(self._pending_baudrate, self._node.nmt.pending_node_id)
+            result = 0  # 0x00 = successfully completed
+        else:
+            result = 1  # 0x01 = not supported
+
+        self._node.network.send(
+            0x7E4, b"\x17" + result.to_bytes(1, "little") + bytes(6)
+        )
 
     def cmd_identify_remote_responders(self, msg: bytes):
         index = msg[0] - 0x46
