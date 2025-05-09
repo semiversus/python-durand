@@ -1,3 +1,8 @@
+# 0.4.13
+
+* fix LSS baudrate configuration handling
+* provide LSS store configuration functionality (bitrate and node id)
+
 # 0.4.12
 
 * update object dictionary on type change in PDOs
