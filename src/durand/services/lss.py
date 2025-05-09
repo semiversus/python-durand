@@ -47,9 +47,18 @@ class LSSSlave:
         node.nmt.state_callbacks.add(self.on_nmt_state_update)
 
     def set_baudrate_change_callback(self, cb: Callable[[int, float], None]):
+        """Defines a callback function to change bitrate. The delay is obtained from
+        the `activate_bit_timing` command.
+        This callback is called after the delay specified in the command and should
+        change the bitrate of the network after waiting for the delay again.
+        :param cb: callback function with signature (baudrate, delay)
+        """
         self._change_baudrate_cb = cb
 
     def set_store_configuration_callback(self, cb: Callable[[int, int], None]):
+        """Defines a callback function to store new bitrate and node id persistently.
+        :param cb: callback function with signature (baudrate, node_id)
+        """
         self._store_configuration_cb = cb
 
     def on_nmt_state_update(self, state: StateEnum):
