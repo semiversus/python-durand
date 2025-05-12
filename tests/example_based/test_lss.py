@@ -2,7 +2,7 @@
 
 from durand import Node, scheduler
 
-from ..mock_network import MockNetwork, TxMsg, RxMsg
+from ..mock_network import MockNetwork, RxMsg, TxMsg
 
 
 class MockScheduler(scheduler.AbstractScheduler):
@@ -84,7 +84,7 @@ def test_configuration():
 
     node.lss.set_baudrate_change_callback(baudrate_change_callback)
 
-    def store_configuration_callback(baudrate: int | None, node_id: int | None):
+    def store_configuration_callback(baudrate: int, node_id: int):
         assert baudrate == 500_000
         assert node_id == 2
 
