@@ -14,7 +14,7 @@ Synopsis
 ========
 
 - Pure Python implementation
-- Licensed under MIT (2021 Günther Jena)
+- Licensed under MIT (2021 Günther Jena, Florian Feurstein, Patrick Kaulfus)
 - Source code hosted on GitHub.com_
 - Tested on Python 3.7 to 3.15
 - Unit tested with pytest_, coding style enforced with Black_, static type checking with mypy_, static code analysis with Pylint_, documentation generated with Sphinx_
