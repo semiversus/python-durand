@@ -16,7 +16,7 @@ Synopsis
 - Pure Python implementation
 - Licensed under MIT (2021 Günther Jena)
 - Source code hosted on GitHub.com_
-- Tested on Python 3.7, 3.8, 3.9, and 3.10
+- Tested on Python 3.7 to 3.15
 - Unit tested with pytest_, coding style enforced with Black_, static type checking with mypy_, static code analysis with Pylint_, documentation generated with Sphinx_
 - Supports CiA301_ (EN 50325-4)
 
