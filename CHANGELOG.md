@@ -1,3 +1,7 @@
+# 0.5.1
+
+* fix NMT handling on startup
+
 # 0.5.0
 
 * fix LSS baudrate configuration handling
