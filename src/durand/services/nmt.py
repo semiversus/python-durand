@@ -64,9 +64,10 @@ class NMTSlave:
         if state == StateEnum.INITIALISATION:
             self._node.node_id = self.pending_node_id
 
-            # send bootup message
-            self._node.network.send(0x700 + self._node.node_id, b"\x00")
-
-        self.state = state
+        previous_state, self.state = self.state, state
 
         self.state_callbacks.call(state)
+
+        if previous_state == StateEnum.INITIALISATION and state == StateEnum.PRE_OPERATIONAL:
+            # send bootup message after the services (e.g. SDO server) are ready for the new node id
+            self._node.network.send(0x700 + self._node.node_id, b"\x00")
